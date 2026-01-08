@@ -200,7 +200,7 @@ export default function VoetbalTracker() {
 
   
 
-  
+  //random comment
   
   if (view === 'menu') {
     return (
