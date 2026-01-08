@@ -1,5 +1,4 @@
-import React from 'react';
-// Calendar toegevoegd aan imports
+import React, { useRef } from 'react';
 import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe, Calendar } from 'lucide-react';
 import type { Player, Parent, Game } from '../types';
 
@@ -13,16 +12,32 @@ interface Props {
 }
 
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, onSave, onCancel }) => {
-  
-  // Helper om de ISO datum string om te zetten naar YYYY-MM-DD voor de input
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- HELPERS VOOR LONG PRESS (MOBILE) ---
+  const handlePressStart = (action: () => void) => {
+    // 500ms indrukken = actie uitvoeren (verminderen)
+    timerRef.current = setTimeout(() => {
+      action();
+      timerRef.current = null;
+      if (window.navigator.vibrate) window.navigator.vibrate(50); // Feedback trilling
+    }, 600);
+  };
+
+  const handlePressEnd = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  // --- ALGEMENE HELPERS ---
   const formatDateForInput = (dateString: string) => {
     return new Date(dateString).toISOString().split('T')[0];
   };
 
-  // Helper om de geselecteerde datum weer terug te zetten naar ISO format
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = new Date(e.target.value);
-    // Behoud de huidige tijd bij het wijzigen van de dag
     const currentTime = new Date(currentGame.date);
     newDate.setHours(currentTime.getHours(), currentTime.getMinutes());
     onUpdateGame({ ...currentGame, date: newDate.toISOString() });
@@ -32,29 +47,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
     const newQuarters = [...currentGame.quarters];
     newQuarters[index] = { ...newQuarters[index], ...updates };
     onUpdateGame({ ...currentGame, quarters: newQuarters });
-  };
-
-  const togglePlayerPresent = (playerId: number) => {
-    onUpdateGame({
-      ...currentGame,
-      playersPresent: currentGame.playersPresent.includes(playerId)
-        ? currentGame.playersPresent.filter(id => id !== playerId)
-        : [...currentGame.playersPresent, playerId]
-    });
-  };
-
-  const toggleParentPresent = (parentId: number) => {
-    onUpdateGame({
-      ...currentGame,
-      parentsPresent: currentGame.parentsPresent.includes(parentId)
-        ? currentGame.parentsPresent.filter(id => id !== parentId)
-        : [...currentGame.parentsPresent, parentId]
-    });
-  };
-
-  const getStatCount = (playerId: number, statArray: number[] | undefined) => {
-    if (!statArray) return 0;
-    return statArray.filter(id => id === playerId).length;
   };
 
   const decrementStat = (idx: number, field: string, playerId?: number) => {
@@ -76,13 +68,22 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
     }
   };
 
-  const onRightClick = (e: React.MouseEvent, action: () => void) => {
-    e.preventDefault();
-    action();
+  const togglePlayerPresent = (playerId: number) => {
+    onUpdateGame({
+      ...currentGame,
+      playersPresent: currentGame.playersPresent.includes(playerId)
+        ? currentGame.playersPresent.filter(id => id !== playerId)
+        : [...currentGame.playersPresent, playerId]
+    });
+  };
+
+  const getStatCount = (playerId: number, statArray: number[] | undefined) => {
+    if (!statArray) return 0;
+    return statArray.filter(id => id === playerId).length;
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-24">
+    <div className="max-w-2xl mx-auto p-4 pb-24 select-none">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-[#04174C]">Live Match</h2>
         <button onClick={onCancel} className="text-red-500 flex items-center gap-1 font-semibold">
@@ -107,7 +108,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
           </button>
         </div>
 
-        {/* Datum Selectie en Tegenstander */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[#04174C]/40" size={18} />
@@ -127,8 +127,9 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
           />
         </div>
       </div>
-{/* Selecties (Spelers & Ouders) - Ongewijzigd */}
-<div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-[#04174C]/20">
+
+      {/* Selecties */}
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-[#04174C]/20">
         <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Shield size={18}/> Wie speelt er?</h3>
         <div className="flex flex-wrap gap-2">
           {players.map(p => (
@@ -149,7 +150,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
           {parents.map(p => (
             <button
               key={p.id}
-              onClick={() => toggleParentPresent(p.id)}
+              onClick={() => onUpdateGame({
+                ...currentGame,
+                parentsPresent: currentGame.parentsPresent.includes(p.id)
+                  ? currentGame.parentsPresent.filter(id => id !== p.id)
+                  : [...currentGame.parentsPresent, p.id]
+              })}
               className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.parentsPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               {p.name}
@@ -164,7 +170,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
           <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <h3 className="font-black text-gray-400 mb-4 uppercase tracking-widest text-sm">Kwart {q.number}</h3>
             
-            {/* Doelman sectie */}
+            {/* Doelman */}
             <div className="mb-6 bg-blue-50/50 p-3 rounded-lg border border-[#04174C]/10">
               <p className="text-xs font-bold text-[#04174C] mb-3 uppercase tracking-wider">Doelman</p>
               <div className="flex flex-col gap-3">
@@ -180,9 +186,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                   ))}
                 </div>
                 <button
+                  style={{ touchAction: 'manipulation' }}
                   onClick={() => updateQuarter(idx, { saves: q.saves + 1 })}
-                  onContextMenu={(e) => onRightClick(e, () => updateQuarter(idx, { saves: Math.max(0, q.saves - 1) }))}
-                  className="w-full py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-sm hover:bg-[#052A6B]"
+                  onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'saves'); }}
+                  onTouchStart={() => handlePressStart(() => decrementStat(idx, 'saves'))}
+                  onTouchEnd={handlePressEnd}
+                  className="w-full py-4 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-sm active:scale-95 select-none"
                 >
                   <Save size={20} />
                   <span>Reddingen: {q.saves}</span>
@@ -192,7 +201,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
 
             {/* Acties per speler */}
             <div className="space-y-4">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Spelersacties</p>
               {players.filter(p => currentGame.playersPresent.includes(p.id)).map(p => {
                 const goalsCount = getStatCount(p.id, q.goals);
                 const assistCount = getStatCount(p.id, (q as any).assists);
@@ -202,26 +210,40 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                   <div key={p.id} className="space-y-2">
                     <span className="font-bold text-[#04174C] text-xs ml-1">{p.name}</span>
                     <div className="flex gap-2">
+                      {/* Goals */}
                       <button
+                        style={{ touchAction: 'manipulation' }}
                         onClick={() => updateQuarter(idx, { goals: [...q.goals, p.id] })}
-                        onContextMenu={(e) => onRightClick(e, () => decrementStat(idx, 'goals', p.id))}
-                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all ${goalsCount > 0 ? 'bg-green-600 text-white shadow-sm' : 'bg-green-50 text-green-700 border border-green-100'}`}
+                        onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'goals', p.id); }}
+                        onTouchStart={() => handlePressStart(() => decrementStat(idx, 'goals', p.id))}
+                        onTouchEnd={handlePressEnd}
+                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 select-none ${goalsCount > 0 ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 border border-green-100'}`}
                       >
                         <Target size={18} />
                         <span className="text-[10px] font-bold">{goalsCount} Goals</span>
                       </button>
+
+                      {/* Assists */}
                       <button
+                        style={{ touchAction: 'manipulation' }}
                         onClick={() => updateQuarter(idx, { assists: [...((q as any).assists || []), p.id] })}
-                        onContextMenu={(e) => onRightClick(e, () => decrementStat(idx, 'assists', p.id))}
-                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all ${assistCount > 0 ? 'bg-yellow-500 text-white shadow-sm' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}
+                        onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'assists', p.id); }}
+                        onTouchStart={() => handlePressStart(() => decrementStat(idx, 'assists', p.id))}
+                        onTouchEnd={handlePressEnd}
+                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 select-none ${assistCount > 0 ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}
                       >
                         <Handshake size={18} />
                         <span className="text-[10px] font-bold">{assistCount} Assists</span>
                       </button>
+
+                      {/* Tackles */}
                       <button
+                        style={{ touchAction: 'manipulation' }}
                         onClick={() => updateQuarter(idx, { tackles: [...((q as any).tackles || []), p.id] })}
-                        onContextMenu={(e) => onRightClick(e, () => decrementStat(idx, 'tackles', p.id))}
-                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all ${tackleCount > 0 ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}
+                        onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'tackles', p.id); }}
+                        onTouchStart={() => handlePressStart(() => decrementStat(idx, 'tackles', p.id))}
+                        onTouchEnd={handlePressEnd}
+                        className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 select-none ${tackleCount > 0 ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}
                       >
                         <Axe size={18} />
                         <span className="text-[10px] font-bold">{tackleCount} Tackles</span>
@@ -231,16 +253,17 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                 );
               })}
 
-              {/* Tegengoals onderaan kwart - Nu met 1 knop (klik = +, long-click = -) */}
+              {/* Tegengoals */}
               <div className="mt-6 pt-4 border-t border-gray-100">
                 <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tegendoelpunten</p>
                 <button
+                  style={{ touchAction: 'manipulation' }}
                   onClick={() => updateQuarter(idx, { opponentGoals: q.opponentGoals + 1 })}
-                  onContextMenu={(e) => onRightClick(e, () => decrementStat(idx, 'opponentGoals'))}
-                  className={`w-full py-2 rounded-lg font-bold flex flex-col items-center justify-center gap-1 transition-all border ${
-                    q.opponentGoals > 0 
-                    ? 'bg-red-600 text-white border-red-700 shadow-md' 
-                    : 'bg-red-50 text-red-700 border-red-100'
+                  onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'opponentGoals'); }}
+                  onTouchStart={() => handlePressStart(() => decrementStat(idx, 'opponentGoals'))}
+                  onTouchEnd={handlePressEnd}
+                  className={`w-full py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 transition-all active:scale-95 select-none ${
+                    q.opponentGoals > 0 ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 border-red-100'
                   }`}
                 >
                   <Target size={22} />
@@ -252,13 +275,13 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         ))}
       </div>
 
-      {/* Opmerkingen & Save */}
+      {/* Opmerkingen */}
       <div className="bg-white p-4 rounded-xl shadow-sm mb-8 border border-yellow-200">
         <h3 className="font-bold mb-3 flex items-center gap-2 text-yellow-800">
           <ClipboardEdit size={18} /> Opmerkingen
         </h3>
         <textarea
-          className="w-full p-3 border border-yellow-100 rounded-lg bg-yellow-50/30 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-yellow-300 outline-none transition-all"
+          className="w-full p-3 border border-yellow-100 rounded-lg bg-yellow-50/30 text-gray-700 outline-none"
           rows={4}
           placeholder="Bijv: Prachtige actie van X..."
           value={(currentGame as any).notes || ''}
@@ -268,7 +291,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
       
       <button
         onClick={onSave}
-        className="w-full mt-4 bg-[#04174C] text-white py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-2 tracking-widest hover:bg-[#052A6B] transition-all transform active:scale-95"
+        className="w-full mt-4 bg-[#04174C] text-white py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
       >
         <Save size={24} /> EINDE WEDSTRIJD
       </button>

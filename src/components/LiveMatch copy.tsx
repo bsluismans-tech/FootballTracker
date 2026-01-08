@@ -1,5 +1,6 @@
 import React from 'react';
-import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe } from 'lucide-react';
+// Calendar toegevoegd aan imports
+import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe, Calendar } from 'lucide-react';
 import type { Player, Parent, Game } from '../types';
 
 interface Props {
@@ -13,6 +14,20 @@ interface Props {
 
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, onSave, onCancel }) => {
   
+  // Helper om de ISO datum string om te zetten naar YYYY-MM-DD voor de input
+  const formatDateForInput = (dateString: string) => {
+    return new Date(dateString).toISOString().split('T')[0];
+  };
+
+  // Helper om de geselecteerde datum weer terug te zetten naar ISO format
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = new Date(e.target.value);
+    // Behoud de huidige tijd bij het wijzigen van de dag
+    const currentTime = new Date(currentGame.date);
+    newDate.setHours(currentTime.getHours(), currentTime.getMinutes());
+    onUpdateGame({ ...currentGame, date: newDate.toISOString() });
+  };
+
   const updateQuarter = (index: number, updates: any) => {
     const newQuarters = [...currentGame.quarters];
     newQuarters[index] = { ...newQuarters[index], ...updates };
@@ -91,17 +106,29 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
             <MapPin size={24} strokeWidth={currentGame.isAway ? 3 : 2} /> Uit
           </button>
         </div>
-        <input
-          type="text"
-          placeholder="Naam tegenstander..."
-          className="w-full p-3 rounded-lg border border-[#04174C]/20 focus:ring-2 focus:ring-[#04174C] outline-none font-bold text-[#04174C]"
-          value={currentGame.opponent || ''}
-          onChange={(e) => onUpdateGame({ ...currentGame, opponent: e.target.value })}
-        />
-      </div>
 
-      {/* Selecties (Spelers & Ouders) - Ongewijzigd */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-[#04174C]/20">
+        {/* Datum Selectie en Tegenstander */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[#04174C]/40" size={18} />
+            <input
+              type="date"
+              className="w-full pl-10 pr-3 py-3 rounded-lg border border-[#04174C]/20 focus:ring-2 focus:ring-[#04174C] outline-none font-bold text-[#04174C] appearance-none"
+              value={formatDateForInput(currentGame.date)}
+              onChange={handleDateChange}
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="Naam tegenstander..."
+            className="w-full p-3 rounded-lg border border-[#04174C]/20 focus:ring-2 focus:ring-[#04174C] outline-none font-bold text-[#04174C]"
+            value={currentGame.opponent || ''}
+            onChange={(e) => onUpdateGame({ ...currentGame, opponent: e.target.value })}
+          />
+        </div>
+      </div>
+{/* Selecties (Spelers & Ouders) - Ongewijzigd */}
+<div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-[#04174C]/20">
         <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Shield size={18}/> Wie speelt er?</h3>
         <div className="flex flex-wrap gap-2">
           {players.map(p => (
