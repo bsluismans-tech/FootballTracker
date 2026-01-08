@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, PartyPopper, Plus, Trophy, Shield, UserCheck, Check, X, Activity, Handshake, Axe, Users, Gamepad2, Megaphone } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, UserCheck, Activity, Handshake, Axe, Users, Gamepad2, Megaphone } from 'lucide-react';
 import type { Player, Game, Parent } from '../types';
 
 interface Props {

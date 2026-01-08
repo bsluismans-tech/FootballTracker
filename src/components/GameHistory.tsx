@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClipboardEdit, Users, UserCheck, Calendar, Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Plus, Gamepad2, Edit3 } from 'lucide-react';
+import { Users, UserCheck, Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Plus, Gamepad2, Edit3 } from 'lucide-react';
 import type { Game, Player } from '../types';
 
 interface Props {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Save, Users, Target, Shield, UserCheck } from 'lucide-react';
 
 // TypeScript interfaces toevoegen voor betere controle
@@ -406,7 +406,8 @@ export default function VoetbalTracker() {
               const totalSaves = game.quarters.reduce((sum, q) => sum + q.saves, 0);
               const totalOpponentGoals = game.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
               
-              const goalsByPlayer = {};
+              const goalsByPlayer: Record<number, number> = {};
+
               game.quarters.forEach(quarter => {
                 quarter.goals.forEach(playerId => {
                   goalsByPlayer[playerId] = (goalsByPlayer[playerId] || 0) + 1;

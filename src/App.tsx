@@ -44,17 +44,6 @@ export default function App() {
     };
   }, []);
 
-  // 2. SPELERS & OUDERS OPSLAAN (Voor de Settings component)
-  const updatePlayers = async (newPlayers: Player[]) => {
-    // In een simpele opzet overschrijven we de collectie of updaten we per doc.
-    // Voor nu gebruiken we de bestaande setPlayers, maar idealiter doe je dit via addDoc in Settings.tsx
-    setPlayers(newPlayers); 
-  };
-
-  const updateParents = async (newParents: Parent[]) => {
-    setParents(newParents);
-  };
-
   // 3. WEDSTRIJD VERWIJDEREN
   const deleteGame = async (id: number) => {
     try {
@@ -117,8 +106,6 @@ export default function App() {
         <Settings 
           players={players} 
           parents={parents} 
-          setPlayers={setPlayers} // Let op: Settings moet idealiter direct naar Firestore schrijven
-          setParents={setParents} 
         />
       )}
 
