@@ -13,16 +13,14 @@ interface Props {
 
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, onSave, onCancel }) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const isLongPress = useRef(false);
 
   // --- HELPERS VOOR LONG PRESS (MOBILE) ---
   const handlePressStart = (action: () => void) => {
-    isLongPress.current = false; // Reset bij nieuwe aanraking
+    // 500ms indrukken = actie uitvoeren (verminderen)
     timerRef.current = setTimeout(() => {
       action();
-      isLongPress.current = true; // Markeer als LongPress uitgevoerd
       timerRef.current = null;
-      if (window.navigator.vibrate) window.navigator.vibrate(50);
+      if (window.navigator.vibrate) window.navigator.vibrate(50); // Feedback trilling
     }, 600);
   };
 
@@ -31,15 +29,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  };
-
-  // Wrapper om de normale klik te blokkeren na een LongPress
-  const handleButtonClick = (action: () => void) => {
-    if (isLongPress.current) {
-      isLongPress.current = false;
-      return;
-    }
-    action();
   };
 
   // --- ALGEMENE HELPERS ---
@@ -198,7 +187,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                 </div>
                 <button
                   style={{ touchAction: 'manipulation' }}
-                  onClick={() => handleButtonClick(() => updateQuarter(idx, { saves: q.saves + 1 }))}
+                  onClick={() => updateQuarter(idx, { saves: q.saves + 1 })}
                   onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'saves'); }}
                   onTouchStart={() => handlePressStart(() => decrementStat(idx, 'saves'))}
                   onTouchEnd={handlePressEnd}
@@ -224,7 +213,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                       {/* Goals */}
                       <button
                         style={{ touchAction: 'manipulation' }}
-                        onClick={() => handleButtonClick(() => updateQuarter(idx, { goals: [...q.goals, p.id] }))}
+                        onClick={() => updateQuarter(idx, { goals: [...q.goals, p.id] })}
                         onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'goals', p.id); }}
                         onTouchStart={() => handlePressStart(() => decrementStat(idx, 'goals', p.id))}
                         onTouchEnd={handlePressEnd}
@@ -237,7 +226,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                       {/* Assists */}
                       <button
                         style={{ touchAction: 'manipulation' }}
-                        onClick={() => handleButtonClick(() => updateQuarter(idx, { assists: [...((q as any).assists || []), p.id] }))}
+                        onClick={() => updateQuarter(idx, { assists: [...((q as any).assists || []), p.id] })}
                         onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'assists', p.id); }}
                         onTouchStart={() => handlePressStart(() => decrementStat(idx, 'assists', p.id))}
                         onTouchEnd={handlePressEnd}
@@ -250,7 +239,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                       {/* Tackles */}
                       <button
                         style={{ touchAction: 'manipulation' }}
-                        onClick={() => handleButtonClick(() => updateQuarter(idx, { tackles: [...((q as any).tackles || []), p.id] }))}
+                        onClick={() => updateQuarter(idx, { tackles: [...((q as any).tackles || []), p.id] })}
                         onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'tackles', p.id); }}
                         onTouchStart={() => handlePressStart(() => decrementStat(idx, 'tackles', p.id))}
                         onTouchEnd={handlePressEnd}
@@ -269,7 +258,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                 <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tegendoelpunten</p>
                 <button
                   style={{ touchAction: 'manipulation' }}
-                  onClick={() => handleButtonClick(() => updateQuarter(idx, { opponentGoals: q.opponentGoals + 1 }))}
+                  onClick={() => updateQuarter(idx, { opponentGoals: q.opponentGoals + 1 })}
                   onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'opponentGoals'); }}
                   onTouchStart={() => handlePressStart(() => decrementStat(idx, 'opponentGoals'))}
                   onTouchEnd={handlePressEnd}
