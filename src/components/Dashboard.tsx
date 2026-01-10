@@ -46,11 +46,6 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
     totalSpectators: 0 
   });
 
-
-
-
-
-
   const goalDiff = stats.goalsFor - stats.goalsAgainst;
 
   const getResult = (game: Game) => {
@@ -86,14 +81,10 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
   const topParents = Object.entries(parentAttendance).map(([id, count]) => ({ id: parseInt(id), count })).sort((a, b) => b.count - a.count).slice(0, 3);
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-32">
+    <div className="max-w-2xl mx-auto p-4 pb-32 select-none">
       {/* Header */}
       <div className="flex justify-between items-end mb-8 px-1">
         <h1 className="text-3xl font-black text-[#04174C] tracking-tight text-left leading-none">U9 Kaulille</h1>
-        <button onClick={startNewGame} disabled={!canStart} className="bg-[#04174C] text-white py-2.5 px-4 rounded-xl shadow-lg hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center gap-2 transition-all active:scale-95 shrink-0">
-          <Plus size={18} strokeWidth={3} />
-          <span className="font-bold text-xs uppercase tracking-wider">Nieuwe wedstrijd</span>
-        </button>
       </div>
       
       <div className="grid gap-4">
@@ -148,83 +139,54 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
           </div>
         </div>
 
-        {/* Team Prestaties Sectie (2 kolommen, 3 rijen) */}
-{/* Team Prestaties Sectie */}
-<div className="bg-gradient-to-br from-[#04174C] to-[#08257a] p-6 rounded-2xl shadow-xl shadow-blue-900/20 border border-white/5 text-white overflow-hidden relative">
-  {/* Subtiele glans-accent op de achtergrond */}
-  <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-400/10 rounded-full blur-3xl"></div>
-  
-  <div className="flex items-center justify-between mb-8">
-    <div className="flex items-center gap-2.5">
-      <div className="p-2 bg-white/10 rounded-lg">
-        <Users size={18} className="text-blue-200" />
-      </div>
-      <h2 className="font-black uppercase text-xs tracking-[0.15em] text-blue-100">Team Stats</h2>
-    </div>
+        {/* --- TEAM STATS SECTIE (ICON NAAST GETAL) --- */}
+<div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-50 relative overflow-hidden">
+  <div className="flex items-center gap-2 mb-8 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+    <Users size={18} className="text-blue-500" /> Team Stats
   </div>
 
-  <div className="grid grid-cols-2 gap-x-8 gap-y-8 relative z-10">
-    {/* Wedstrijden */}
-    <div className="flex flex-col gap-1">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Wedstrijden</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{games.length}</span>
-        <Gamepad2 size={32} className="text-blue-400/50" />
+  <div className="grid grid-cols-3 gap-y-8 gap-x-2 relative z-10">
+    {[
+      { label: 'Matchen', value: games.length, icon: <Gamepad2 size={16} />, color: 'text-blue-500' },
+      { label: 'Goals', value: stats.goalsFor, icon: <Target size={16} />, color: 'text-yellow-500' },
+      { label: 'Assists', value: stats.totalAssists, icon: <Handshake size={16} />, color: 'text-yellow-500' },
+      { label: 'Tackles', value: stats.totalTackles, icon: <Axe size={16} />, color: 'text-blue-400' },
+      { label: 'Saves', value: stats.totalSaves, icon: <Shield size={16} />, color: 'text-emerald-500' },
+      { label: 'Fans', value: stats.totalSpectators, icon: <UserCheck size={16} />, color: 'text-purple-500' },
+    ].map((item, i) => (
+      <div key={i} className="flex flex-col items-center">
+        {/* Getal + Icon rij */}
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className="text-2xl font-black text-[#04174C] tabular-nums tracking-tight">
+            {item.value}
+          </span>
+          <div className={`${item.color} opacity-60`}>
+            {item.icon}
+          </div>
+        </div>
+        {/* Label rij */}
+        <span className="text-[9px] uppercase font-black tracking-widest text-gray-400">
+          {item.label}
+        </span>
       </div>
-    </div>
-
-    {/* Doelpunten */}
-    <div className="flex flex-col gap-1 pl-6">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Doelpunten</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{stats.goalsFor}</span>
-        <Target size={32} className="text-green-400/60" />
-      </div>
-    </div>
-
-    {/* Assists */}
-    <div className="flex flex-col gap-1 pt-5">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Assists</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{stats.totalAssists}</span>
-        <Handshake size={32} className="text-yellow-400/60" />
-      </div>
-    </div>
-
-    {/* Tackles */}
-    <div className="flex flex-col gap-1 pl-6 pt-5">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Tackles</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{stats.totalTackles}</span>
-        <Axe size={32} className="text-blue-300/60" />
-      </div>
-    </div>
-
-    {/* Saves */}
-    <div className="flex flex-col gap-1 pt-5">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Saves</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{stats.totalSaves}</span>
-        <Shield size={32} className="text-emerald-400/60" />
-      </div>
-    </div>
-
-    {/* Toeschouwers */}
-    <div className="flex flex-col gap-1 pl-6 pt-5">
-      <span className="text-[9px] uppercase font-black text-blue-300/60 tracking-[0.1em]">Toeschouwers</span>
-      <div className="flex items-baseline gap-1.5 items-center">
-        <span className="text-3xl font-black tabular-nums">{stats.totalSpectators}</span>
-        <UserCheck size={32} className="text-purple-400/60" />
-      </div>
-    </div>
+    ))}
   </div>
 </div>
-
-
-
-
-
-
+        
+        
+        
+        {/* --- NIEUWE WEDSTRIJD KNOP (BREED) --- */}
+        <button 
+          onClick={startNewGame} 
+          disabled={!canStart} 
+          className="w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+        >
+          <Plus size={22} strokeWidth={3} />
+          <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
+        </button>
+        
+        
+        
 
         {/* Topscorer Lijst */}
         {sortedScorers.length > 0 && (
@@ -236,7 +198,7 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
               {sortedScorers.map((scorer, index) => (
                 <div key={scorer.id} className="flex justify-between items-center">
                   <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(scorer.id)}</span>
-                  <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded-lg">{scorer.goals} goals</span>
+                  <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">{scorer.goals} goals</span>
                 </div>
               ))}
             </div>
