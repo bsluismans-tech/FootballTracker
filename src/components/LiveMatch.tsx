@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe, Calendar } from 'lucide-react';
+import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe, Calendar, ChevronDown, Users } from 'lucide-react';
 import type { Player, Parent, Game } from '../types';
 
 interface Props {
@@ -93,6 +93,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
     return statArray.filter(id => id === playerId).length;
   };
 
+  const presentPlayers = players.filter(p => currentGame.playersPresent.includes(p.id));
+
   return (
     <div className="max-w-2xl mx-auto p-4 pb-24 select-none">
       <div className="flex justify-between items-center mb-6">
@@ -141,7 +143,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
 
       {/* Selecties */}
       <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-[#04174C]/20">
-        <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Shield size={18}/> Wie speelt er?</h3>
+        <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Users size={18}/> Wie speelt er?</h3>
         <div className="flex flex-wrap gap-2">
           {players.map(p => (
             <button
@@ -181,20 +183,22 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
           <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <h3 className="font-black text-gray-400 mb-4 uppercase tracking-widest text-sm">Kwart {q.number}</h3>
             
-            {/* Doelman */}
+            {/* Doelman Sectie - COMPACTE LAY-OUT */}
             <div className="mb-6 bg-blue-50/50 p-3 rounded-lg border border-[#04174C]/10">
-              <p className="text-xs font-bold text-[#04174C] mb-3 uppercase tracking-wider">Doelman</p>
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  {players.filter(p => currentGame.playersPresent.includes(p.id)).map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => updateQuarter(idx, { goalkeeper: p.id })}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${q.goalkeeper === p.id ? 'bg-[#04174C] text-white' : 'bg-white text-[#04174C] border border-[#04174C]/20'}`}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
+              <p className="text-xs font-bold text-[#04174C] mb-2 uppercase tracking-wider">Doelman & Reddingen</p>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <select
+                    value={q.goalkeeper || ''}
+                    onChange={(e) => updateQuarter(idx, { goalkeeper: Number(e.target.value) })}
+                    className="w-full pl-3 pr-8 py-3 bg-white border border-[#04174C]/20 rounded-lg font-bold text-[#04174C] appearance-none outline-none text-sm"
+                  >
+                    <option value="">Keeper...</option>
+                    {presentPlayers.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#04174C] pointer-events-none" size={16} />
                 </div>
                 <button
                   style={{ touchAction: 'manipulation' }}
@@ -202,17 +206,17 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                   onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'saves'); }}
                   onTouchStart={() => handlePressStart(() => decrementStat(idx, 'saves'))}
                   onTouchEnd={handlePressEnd}
-                  className="w-full py-4 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-3 shadow-sm active:scale-95 select-none"
+                  className="flex-[0.8] py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 shadow-sm active:scale-95 select-none text-sm"
                 >
-                  <Save size={20} />
-                  <span>Reddingen: {q.saves}</span>
+                  <Shield size={16} />
+                  <span>{q.saves} reddingen</span>
                 </button>
               </div>
             </div>
 
             {/* Acties per speler */}
             <div className="space-y-4">
-              {players.filter(p => currentGame.playersPresent.includes(p.id)).map(p => {
+            {presentPlayers.map(p => {
                 const goalsCount = getStatCount(p.id, q.goals);
                 const assistCount = getStatCount(p.id, (q as any).assists);
                 const tackleCount = getStatCount(p.id, (q as any).tackles);
