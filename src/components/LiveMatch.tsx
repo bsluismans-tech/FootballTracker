@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Shield, Target, Save, X, UserCheck, ClipboardEdit, Home, MapPin, Handshake, Axe, Calendar, ChevronDown, Users, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Player, Parent, Game } from '../types';
 
@@ -16,15 +16,46 @@ type Step = 'setup' | 'play' | 'review';
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, onSave, onCancel }) => {
   const [currentStep, setCurrentStep] = useState<Step>('setup');
   const [activeQuarterIdx, setActiveQuarterIdx] = useState(0);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
 
-  // --- STATISTIEK BEREKENINGEN ---
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [currentStep, activeQuarterIdx]);
+
   const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goals.length, 0);
   const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
 
-  // --- HELPERS ---
+  const handleNext = () => {
+    if (currentStep === 'setup') {
+      setCurrentStep('play');
+      setActiveQuarterIdx(0);
+    } else if (currentStep === 'play') {
+      if (activeQuarterIdx < 3) {
+        setActiveQuarterIdx(activeQuarterIdx + 1);
+      } else {
+        setCurrentStep('review');
+      }
+    } else {
+      onSave();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 'review') {
+      setCurrentStep('play');
+      setActiveQuarterIdx(3);
+    } else if (currentStep === 'play') {
+      if (activeQuarterIdx > 0) {
+        setActiveQuarterIdx(activeQuarterIdx - 1);
+      } else {
+        setCurrentStep('setup');
+      }
+    }
+  };
+
   const handlePressStart = (action: () => void) => {
     isLongPress.current = false;
     timerRef.current = setTimeout(() => {
@@ -50,9 +81,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
     action();
   };
 
-  const formatDateForInput = (dateString: string) => {
-    return new Date(dateString).toISOString().split('T')[0];
-  };
+  const formatDateForInput = (dateString: string) => new Date(dateString).toISOString().split('T')[0];
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = new Date(e.target.value);
@@ -92,13 +121,27 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
 
   return (
     <div className="max-w-2xl mx-auto p-4 pb-40 select-none">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-[#04174C]">
-          {currentStep === 'setup' && 'Selectie'}
-          {currentStep === 'play' && 'Live Match'}
-          {currentStep === 'review' && 'Overzicht'}
-        </h2>
-        <button onClick={onCancel} className="text-red-500 flex items-center gap-1 font-semibold">
+      
+      {/* PROGRESS TRACKER */}
+      <div className="flex justify-between items-center mb-6 px-1">
+        <div className="flex gap-2">
+          {[0, 1, 2, 3].map((idx) => {
+            const isCurrent = currentStep === 'play' && activeQuarterIdx === idx;
+            const isPast = (currentStep === 'play' && activeQuarterIdx > idx) || currentStep === 'review';
+            return (
+              <div
+                key={idx}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-black transition-all duration-300
+                  ${isCurrent ? 'bg-white border-2 border-[#04174C] text-[#04174C] scale-110 shadow-sm' 
+                  : isPast ? 'bg-[#04174C] text-white border-2 border-[#04174C]' 
+                  : 'bg-gray-100 text-gray-300 border-2 border-transparent'}`}
+              >
+                Q{idx + 1}
+              </div>
+            );
+          })}
+        </div>
+        <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm">
           <X size={18} /> Annuleren
         </button>
       </div>
@@ -108,36 +151,15 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20 space-y-4">
             <div className="flex gap-2">
-              <button
-                onClick={() => onUpdateGame({ ...currentGame, isAway: false })}
-                className={`flex-1 py-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex flex-col items-center gap-2 ${!currentGame.isAway ? 'bg-[#04174C] text-white shadow-md' : 'bg-white text-[#04174C] border border-[#04174C]/20'}`}
-              >
-                <Home size={24} /> Thuis
-              </button>
-              <button
-                onClick={() => onUpdateGame({ ...currentGame, isAway: true })}
-                className={`flex-1 py-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex flex-col items-center gap-2 ${currentGame.isAway ? 'bg-[#04174C] text-white shadow-md' : 'bg-white text-[#04174C] border border-[#04174C]/20'}`}
-              >
-                <MapPin size={24} /> Uit
-              </button>
+              <button onClick={() => onUpdateGame({ ...currentGame, isAway: false })} className={`flex-1 py-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex flex-col items-center gap-2 ${!currentGame.isAway ? 'bg-[#04174C] text-white shadow-md' : 'bg-white text-[#04174C] border border-[#04174C]/20'}`}><Home size={24} /> Thuis</button>
+              <button onClick={() => onUpdateGame({ ...currentGame, isAway: true })} className={`flex-1 py-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex flex-col items-center gap-2 ${currentGame.isAway ? 'bg-[#04174C] text-white shadow-md' : 'bg-white text-[#04174C] border border-[#04174C]/20'}`}><MapPin size={24} /> Uit</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[#04174C]/40" size={18} />
-                <input
-                  type="date"
-                  className="w-full pl-10 pr-3 py-3 rounded-lg border border-[#04174C]/20 focus:ring-2 focus:ring-[#04174C] outline-none font-bold text-[#04174C] appearance-none"
-                  value={formatDateForInput(currentGame.date)}
-                  onChange={handleDateChange}
-                />
+                <input type="date" className="w-full pl-10 pr-3 py-3 rounded-lg border border-[#04174C]/20 font-bold text-[#04174C] appearance-none" value={formatDateForInput(currentGame.date)} onChange={handleDateChange} />
               </div>
-              <input
-                type="text"
-                placeholder="Naam tegenstander..."
-                className="w-full p-3 rounded-lg border border-[#04174C]/20 focus:ring-2 focus:ring-[#04174C] outline-none font-bold text-[#04174C]"
-                value={currentGame.opponent || ''}
-                onChange={(e) => onUpdateGame({ ...currentGame, opponent: e.target.value })}
-              />
+              <input type="text" placeholder="Naam tegenstander..." className="w-full p-3 rounded-lg border border-[#04174C]/20 font-bold text-[#04174C]" value={currentGame.opponent || ''} onChange={(e) => onUpdateGame({ ...currentGame, opponent: e.target.value })} />
             </div>
           </div>
 
@@ -145,13 +167,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
             <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Users size={18}/> Wie speelt er?</h3>
             <div className="flex flex-wrap gap-2">
               {players.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}
-                >
-                  {p.name}
-                </button>
+                <button key={p.id} onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})} className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}>{p.name}</button>
               ))}
             </div>
           </div>
@@ -160,13 +176,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
             <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><UserCheck size={18}/> Toeschouwers</h3>
             <div className="flex flex-wrap gap-2">
               {parents.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => onUpdateGame({...currentGame, parentsPresent: currentGame.parentsPresent.includes(p.id) ? currentGame.parentsPresent.filter(id => id !== p.id) : [...currentGame.parentsPresent, p.id]})}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.parentsPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}
-                >
-                  {p.name}
-                </button>
+                <button key={p.id} onClick={() => onUpdateGame({...currentGame, parentsPresent: currentGame.parentsPresent.includes(p.id) ? currentGame.parentsPresent.filter(id => id !== p.id) : [...currentGame.parentsPresent, p.id]})} className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.parentsPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}>{p.name}</button>
               ))}
             </div>
           </div>
@@ -176,86 +186,35 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
       {/* --- STAP 2: MATCH --- */}
       {currentStep === 'play' && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {currentGame.quarters.map((q, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveQuarterIdx(idx)}
-                className={`flex-none px-6 py-2 rounded-lg font-black transition-all ${activeQuarterIdx === idx ? 'bg-[#04174C] text-white' : 'bg-white text-gray-300 border border-gray-100'}`}
-              >
-                Q{q.number}
-              </button>
-            ))}
-          </div>
-
           {currentGame.quarters.map((q, idx) => idx === activeQuarterIdx && (
-            <div key={idx} className="space-y-4">
+            <div key={idx} className="space-y-3">
+              {/* Doelman Sectie - py-3 hoogte */}
               <div className="bg-blue-50/50 p-3 rounded-lg border border-[#04174C]/10 flex items-center gap-2">
                 <div className="relative flex-1">
-                  <select
-                    value={q.goalkeeper || ''}
-                    onChange={(e) => updateQuarter(idx, { goalkeeper: Number(e.target.value) })}
-                    className="w-full pl-3 pr-8 py-3 bg-white border border-[#04174C]/20 rounded-lg font-bold text-[#04174C] appearance-none outline-none text-sm"
-                  >
-                    <option value="">Keeper...</option>
-                    {presentPlayers.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
-                  </select>
+                  <select value={q.goalkeeper || ''} onChange={(e) => updateQuarter(idx, { goalkeeper: Number(e.target.value) })} className="w-full pl-3 pr-8 py-3 bg-white border border-[#04174C]/20 rounded-lg font-bold text-[#04174C] appearance-none outline-none text-sm"><option value="">Keeper...</option>{presentPlayers.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}</select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#04174C] pointer-events-none" size={16} />
                 </div>
-                <button
-                  style={{ touchAction: 'manipulation' }}
-                  onClick={() => handleButtonClick(() => updateQuarter(idx, { saves: q.saves + 1 }))}
-                  onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'saves'); }}
-                  onTouchStart={() => handlePressStart(() => decrementStat(idx, 'saves'))}
-                  onTouchEnd={handlePressEnd}
-                  className="flex-[0.8] py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 text-sm"
-                >
-                  <Shield size={16} />
-                  <span>{q.saves} Reds</span>
-                </button>
+                <button style={{ touchAction: 'manipulation' }} onClick={() => handleButtonClick(() => updateQuarter(idx, { saves: q.saves + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(idx, 'saves'))} onTouchEnd={handlePressEnd} className="flex-[0.8] py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 text-sm"><Shield size={16} />{q.saves} Reds</button>
               </div>
 
-              <div className="space-y-2">
+              {/* Spelerslijst - py-3 hoogte voor knoppen */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
                 {presentPlayers.map(p => {
                   const gc = getStatCount(p.id, q.goals);
                   const ac = getStatCount(p.id, (q as any).assists);
                   const tc = getStatCount(p.id, (q as any).tackles);
                   return (
-                    <div key={p.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm space-y-2">
-                      <span className="font-bold text-[#04174C] text-xs ml-1">{p.name}</span>
-                      <div className="flex gap-2">
-                        <button
-                          style={{ touchAction: 'manipulation' }}
-                          onClick={() => handleButtonClick(() => updateQuarter(idx, { goals: [...q.goals, p.id] }))}
-                          onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'goals', p.id); }}
-                          onTouchStart={() => handlePressStart(() => decrementStat(idx, 'goals', p.id))}
-                          onTouchEnd={handlePressEnd}
-                          className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 ${gc > 0 ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 border border-green-100'}`}
-                        >
-                          <Target size={18} />
-                          <span className="text-[10px] font-bold">{gc} Goals</span>
+                    <div key={p.id} className="p-2 pl-3 flex items-center gap-3">
+                      <span className="font-bold text-[#04174C] text-xs flex-1 truncate">{p.name}</span>
+                      <div className="flex gap-1.5 flex-[3.5]">
+                        <button style={{ touchAction: 'manipulation' }} onClick={() => handleButtonClick(() => updateQuarter(idx, { goals: [...q.goals, p.id] }))} onTouchStart={() => handlePressStart(() => decrementStat(idx, 'goals', p.id))} onTouchEnd={handlePressEnd} className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 transition-all active:scale-95 ${gc > 0 ? 'bg-green-600 text-white shadow-sm' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                          <Target size={14}/><span className="text-[9px] font-black uppercase">Goal {gc}</span>
                         </button>
-                        <button
-                          style={{ touchAction: 'manipulation' }}
-                          onClick={() => handleButtonClick(() => updateQuarter(idx, { assists: [...((q as any).assists || []), p.id] }))}
-                          onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'assists', p.id); }}
-                          onTouchStart={() => handlePressStart(() => decrementStat(idx, 'assists', p.id))}
-                          onTouchEnd={handlePressEnd}
-                          className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 ${ac > 0 ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}
-                        >
-                          <Handshake size={18} />
-                          <span className="text-[10px] font-bold">{ac} Assists</span>
+                        <button style={{ touchAction: 'manipulation' }} onClick={() => handleButtonClick(() => updateQuarter(idx, { assists: [...((q as any).assists || []), p.id] }))} onTouchStart={() => handlePressStart(() => decrementStat(idx, 'assists', p.id))} onTouchEnd={handlePressEnd} className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 transition-all active:scale-95 ${ac > 0 ? 'bg-yellow-500 text-white shadow-sm' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}>
+                          <Handshake size={14}/><span className="text-[9px] font-black uppercase">Assis {ac}</span>
                         </button>
-                        <button
-                          style={{ touchAction: 'manipulation' }}
-                          onClick={() => handleButtonClick(() => updateQuarter(idx, { tackles: [...((q as any).tackles || []), p.id] }))}
-                          onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'tackles', p.id); }}
-                          onTouchStart={() => handlePressStart(() => decrementStat(idx, 'tackles', p.id))}
-                          onTouchEnd={handlePressEnd}
-                          className={`flex-1 py-3 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 ${tc > 0 ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}
-                        >
-                          <Axe size={18} />
-                          <span className="text-[10px] font-bold">{tc} Tackles</span>
+                        <button style={{ touchAction: 'manipulation' }} onClick={() => handleButtonClick(() => updateQuarter(idx, { tackles: [...((q as any).tackles || []), p.id] }))} onTouchStart={() => handlePressStart(() => decrementStat(idx, 'tackles', p.id))} onTouchEnd={handlePressEnd} className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 transition-all active:scale-95 ${tc > 0 ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                          <Axe size={14}/><span className="text-[9px] font-black uppercase">Tack {tc}</span>
                         </button>
                       </div>
                     </div>
@@ -263,19 +222,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
                 })}
               </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-                <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Tegendoelpunten</p>
-                <button
-                  style={{ touchAction: 'manipulation' }}
-                  onClick={() => handleButtonClick(() => updateQuarter(idx, { opponentGoals: q.opponentGoals + 1 }))}
-                  onContextMenu={(e) => { e.preventDefault(); decrementStat(idx, 'opponentGoals'); }}
-                  onTouchStart={() => handlePressStart(() => decrementStat(idx, 'opponentGoals'))}
-                  onTouchEnd={handlePressEnd}
-                  className={`w-full py-3 rounded-lg font-bold flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${q.opponentGoals > 0 ? 'bg-red-600 text-white shadow-md' : 'bg-red-50 text-red-700 border border-red-100'}`}
-                >
-                  <Target size={22} />
-                  <span className="text-xl leading-none">{q.opponentGoals}</span>
-                </button>
+              {/* Tegendoelpunten - py-3 hoogte */}
+              <div className="mt-4 bg-red-50/50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
+                <div className="flex-1">
+                   <p className="text-xs font-bold text-red-700 uppercase tracking-wider ml-1">Tegendoelpunten</p>
+                </div>
+                <button style={{ touchAction: 'manipulation' }} onClick={() => handleButtonClick(() => updateQuarter(idx, { opponentGoals: q.opponentGoals + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(idx, 'opponentGoals'))} onTouchEnd={handlePressEnd} className={`flex-[0.8] py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-sm ${q.opponentGoals > 0 ? 'bg-red-600 text-white shadow-md' : 'bg-white text-red-600 border border-red-200'}`}><Target size={18} />{q.opponentGoals} Goals</button>
               </div>
             </div>
           ))}
@@ -287,53 +239,45 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-[#04174C]/20 text-center space-y-2">
             <h3 className="text-3xl font-black text-[#04174C]">{totalGoals} - {totalOpponentGoals}</h3>
-            <p className="font-bold text-gray-500 uppercase tracking-widest text-xs">
-              U9 Kaulille vs {currentGame.opponent || 'Tegenstander'}
-            </p>
-            <div className={`text-sm font-black px-4 py-1 rounded-full inline-block ${totalGoals >= totalOpponentGoals ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {totalGoals > totalOpponentGoals ? 'GEWONNEN 🎉' : totalGoals < totalOpponentGoals ? 'VERLOREN ⚽️' : 'GELIJKSPEL 🤝'}
-            </div>
+            <p className="font-bold text-gray-500 uppercase tracking-widest text-xs">U9 Kaulille vs {currentGame.opponent || 'Tegenstander'}</p>
+            <div className={`text-sm font-black px-4 py-1 rounded-full inline-block ${totalGoals >= totalOpponentGoals ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{totalGoals > totalOpponentGoals ? 'GEWONNEN 🎉' : totalGoals < totalOpponentGoals ? 'VERLOREN ⚽️' : 'GELIJKSPEL 🤝'}</div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
-            <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><ClipboardEdit size={18}/> Opmerkingen</h3>
-            <textarea
-              className="w-full p-3 border border-gray-100 rounded-lg bg-gray-50 text-gray-700 outline-none focus:ring-2 focus:ring-[#04174C]/10"
-              rows={6}
-              placeholder="Matchverslag..."
-              value={(currentGame as any).notes || ''}
-              onChange={(e) => onUpdateGame({ ...currentGame, notes: e.target.value } as any)}
-            />
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-yellow-200">
+            <h3 className="font-bold mb-3 flex items-center gap-2 text-yellow-800"><ClipboardEdit size={18} /> Opmerkingen</h3>
+            <textarea className="w-full p-3 border border-yellow-100 rounded-lg bg-yellow-50/30 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-yellow-300 outline-none transition-all" rows={6} placeholder="Matchverslag..." value={(currentGame as any).notes || ''} onChange={(e) => onUpdateGame({ ...currentGame, notes: e.target.value } as any)} />
           </div>
         </div>
       )}
 
-      {/* --- STICKY NAVIGATIE --- */}
+      {/* STICKY NAVIGATIE */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
         <div className="max-w-2xl mx-auto space-y-2">
-          {currentStep === 'setup' && (
-            <button onClick={() => setCurrentStep('play')} className="w-full bg-[#04174C] text-white py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
-              START WEDSTRIJD <ChevronRight size={20}/>
-            </button>
-          )}
-          {currentStep === 'play' && (
-            <button onClick={() => setCurrentStep('review')} className="w-full bg-[#04174C] text-white py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
-              NAAR OVERZICHT <ChevronRight size={20}/>
-            </button>
-          )}
-          {currentStep === 'review' && (
-            <button onClick={onSave} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
-              <Save size={20} /> MATCH OPSLAAN
-            </button>
-          )}
-          
+          <button onClick={handleNext} className={`w-full text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all ${currentStep === 'review' ? 'bg-green-600' : 'bg-[#04174C]'}`}>
+            {currentStep === 'setup' && 'START WEDSTRIJD'}
+            {currentStep === 'play' && (activeQuarterIdx < 3 ? `START KWART ${activeQuarterIdx + 2}` : 'EINDE WEDSTRIJD')}
+            {currentStep === 'review' && 'MATCH OPSLAAN'}
+          </button>
           {currentStep !== 'setup' && (
-            <button onClick={() => setCurrentStep(currentStep === 'review' ? 'play' : 'setup')} className="w-full text-gray-400 py-2 font-bold flex items-center justify-center gap-1 active:opacity-50 text-sm">
-              <ChevronLeft size={16}/> TERUG
-            </button>
+            <button onClick={handleBack} className="w-full border-2 border-[#04174C] text-[#04174C] py-4 rounded-xl font-bold active:scale-95 active:opacity-50 text-sm transition-all uppercase tracking-widest">TERUG</button>
           )}
         </div>
       </div>
+
+      {/* CONFIRMATION POP-UP */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4" onMouseDown={() => setShowCancelConfirm(false)}>
+          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
+            <div className="mb-6 text-lg font-bold text-[#04174C]">
+              Wil je de wedstrijd annuleren? <span className="text-sm font-normal block mt-1 text-gray-500">Alle huidige data gaat verloren.</span>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button className="px-4 py-2 rounded-lg font-semibold text-gray-500 hover:bg-gray-100 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>
+              <button className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={() => { onCancel(); setShowCancelConfirm(false); }}>Ja</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
