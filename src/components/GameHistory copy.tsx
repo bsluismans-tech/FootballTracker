@@ -35,7 +35,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-24">
+    <div className="max-w-2xl mx-auto p-4 pb-40"> {/* pb verhoogd voor ruimte onderaan */}
       {/* Header Sectie */}
       <div className="flex justify-between items-center mb-8 px-1">
         <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
       </div>
 
       {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP */}
-      <div className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
+      <div className="fixed bottom-[65px] left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-40">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={startNewGame}

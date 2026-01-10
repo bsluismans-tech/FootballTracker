@@ -27,7 +27,10 @@ export const MatchPlay: React.FC<Props> = ({
     onUpdateQuarter({ substitutes: newSubs } as any);
   };
 
-  const onFieldPlayers = presentPlayers.filter(p => !((quarter as any).substitutes || []).includes(p.id));
+  // Alfabetisch gesorteerde lijst van aanwezige spelers
+  const sortedPresentPlayers = [...presentPlayers].sort((a, b) => a.name.localeCompare(b.name));
+
+  const onFieldPlayers = sortedPresentPlayers.filter(p => !((quarter as any).substitutes || []).includes(p.id));
   const isLineupComplete = onFieldPlayers.length === 5;
 
   return (
@@ -40,7 +43,7 @@ export const MatchPlay: React.FC<Props> = ({
           </h3>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {presentPlayers.filter(p => ((quarter as any).substitutes || []).includes(p.id) || onFieldPlayers.length > 5).map(p => (
+          {sortedPresentPlayers.filter(p => ((quarter as any).substitutes || []).includes(p.id) || onFieldPlayers.length > 5).map(p => (
             <button key={p.id} onClick={() => toggleSubstitute(p.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${((quarter as any).substitutes || []).includes(p.id) ? 'bg-[#04174C] text-white shadow-sm' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}>
               {p.name}
             </button>
