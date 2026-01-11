@@ -142,7 +142,7 @@ export const MatchPlay: React.FC<Props> = ({
                   {wasSwappedIn && <ArrowUpCircle size={12} className="text-green-500 shrink-0" />}
                 </div>
                 {!wasSwappedOut && (
-                  <button onClick={() => setWisselTarget(p.id)} className="flex items-center gap-1 text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-0.5">
+                  <button onClick={() => setWisselTarget(p.id)} className="flex items-center gap-1 text-[8px] font-black text-gray-400 uppercase tracking-tighter mt-0.5">
                     <RefreshCw size={8}/> Wissel
                   </button>
                 )}

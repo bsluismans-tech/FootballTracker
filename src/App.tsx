@@ -36,7 +36,6 @@ export default function App() {
       setGames(snapshot.docs.map(doc => ({ ...doc.data() } as Game)));
     });
 
-    // Cleanup subscriptions
     return () => {
       unsubPlayers();
       unsubParents();
@@ -58,13 +57,26 @@ export default function App() {
     setView('game');
   };
 
-  const startNewGame = () => {
+  // 4. START NIEUWE WEDSTRIJD
+  const startNewGame = async () => {
     if (players.length === 0) return;
+    
+    const newId = Date.now().toString();
     const game: Game = {
-      id: Date.now(),
+      id: newId,
       date: new Date().toISOString(),
+      // Status 'setup' zorgt dat hij nog NIET op het live-dashboard verschijnt
+      status: 'setup', 
       quarters: [1, 2, 3, 4].map(n => ({ 
-        number: n, goals: [], tackles: [], assists: [], saves: 0, goalkeeper: null, opponentGoals: 0 
+        number: n, 
+        goals: [], 
+        tackles: [], 
+        assists: [], 
+        saves: 0, 
+        goalkeeper: null, 
+        opponentGoals: 0,
+        substitutes: [],   // Belangrijk voor wissel-logica
+        substitutions: []  // Belangrijk voor pijl-logica
       })),
       playersPresent: players.map(p => p.id), 
       parentsPresent: [],
@@ -72,21 +84,30 @@ export default function App() {
       isAway: false,
       notes: ''
     };
-    setCurrentGame(game);
-    setView('game');
+
+    try {
+      // We maken het document direct aan in de DB zodat LiveMatch kan syncen
+      await setDoc(doc(db, "games", newId.toString()), game);
+      setCurrentGame(game);
+      setView('game');
+    } catch (error) {
+      console.error("Fout bij aanmaken wedstrijd:", error);
+    }
   };
 
-  // 4. WEDSTRIJD OPSLAAN IN CLOUD
+  // 5. WEDSTRIJD DEFINITIEF OPSLAAN
   const saveGame = async () => {
     if (currentGame) {
       try {
-        // setDoc met { merge: true } update de game als het ID al bestaat, anders maakt hij een nieuwe.
-        await setDoc(doc(db, "games", currentGame.id.toString()), currentGame);
+        // De status wordt in LiveMatch.tsx al op 'finished' gezet bij de laatste stap,
+        // maar voor de zekerheid forceren we het hier nogmaals bij het afsluiten.
+        const finalGame = { ...currentGame, status: 'finished' };
+        await setDoc(doc(db, "games", currentGame.id.toString()), finalGame);
         setCurrentGame(null);
         setView('dashboard');
       } catch (error) {
         console.error("Fout bij opslaan:", error);
-        alert("Kon de wedstrijd niet opslaan in de database.");
+        alert("Kon de wedstrijd niet opslaan.");
       }
     }
   };
@@ -102,6 +123,7 @@ export default function App() {
           canStart={players.length > 0} 
         />
       )}
+
       {view === 'settings' && (
         <Settings 
           players={players} 

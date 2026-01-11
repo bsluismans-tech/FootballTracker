@@ -16,6 +16,10 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
   
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; opponent: string; date: string } | null>(null);
 
+  // --- FILTERING ---
+  // Alleen voltooide wedstrijden tonen in de geschiedenis
+  const finishedGames = games.filter(g => g.status === 'finished');
+
   const getPlayerName = (id: number | null) => {
     if (!id) return 'Geen';
     return players.find(p => p.id === id)?.name || 'Onbekend';
@@ -28,14 +32,14 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
   const openConfirm = (e: React.MouseEvent, g: Game) => {
     e.stopPropagation();
     setConfirmDelete({
-      id: g.id,
+      id: g.id as number,
       opponent: g.opponent || 'Onbekende tegenstander',
       date: new Date(g.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
     });
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-24">
+    <div className="max-w-2xl mx-auto p-4 pb-40"> {/* pb-40 voor ruimte boven de sticky button */}
       {/* Header Sectie */}
       <div className="flex justify-between items-center mb-8 px-1">
         <div className="flex items-center gap-2">
@@ -45,12 +49,12 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
       </div>
       
       <div className="space-y-4">
-        {games.length === 0 ? (
+        {finishedGames.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl text-center border-2 border-dashed border-gray-200">
-            <p className="text-gray-400 italic font-medium">Nog geen wedstrijden opgeslagen.</p>
+            <p className="text-gray-400 italic font-medium">Nog geen voltooide wedstrijden.</p>
           </div>
         ) : (
-          [...games]
+          [...finishedGames]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map((g) => {
               const ourGoals = g.quarters.reduce((s, q) => s + q.goals.length, 0);
@@ -66,7 +70,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                   className={`bg-white rounded-2xl shadow-sm border transition-all cursor-pointer overflow-hidden ${
                     isExpanded ? 'border-[#04174C]/20 shadow-md' : 'border-gray-100'
                   }`}
-                  onClick={() => toggleExpand(g.id)}
+                  onClick={() => toggleExpand(g.id as number)}
                 >
                   {/* Card Header */}
                   <div className="p-4 flex justify-between items-center">

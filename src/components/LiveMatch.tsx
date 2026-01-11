@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import type { Player, Parent, Game } from '../types';
 
 // Importeer de sub-componenten
@@ -31,13 +33,42 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentStep, activeQuarterIdx]);
 
+  // --- REAL-TIME FIREBASE SYNC ---
+  // Telkens als currentGame wijzigt, sturen we de data naar de database.
+  // Hierdoor verspringen de scores op de telefoons van alle andere gebruikers (LiveScoreboard).
+  useEffect(() => {
+    const syncToFirebase = async () => {
+      // We syncen alleen als de match daadwerkelijk gestart is (niet in setup)
+      if (currentStep !== 'setup' && currentGame.id) {
+        const gameRef = doc(db, "games", currentGame.id.toString());
+        try {
+          await updateDoc(gameRef, {
+            ...currentGame,
+            // We houden de status op 'active' zolang we in 'play' of 'review' zitten
+            status: 'active',
+            lastUpdate: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error("Fout bij synchroniseren naar dashboard:", err);
+        }
+      }
+    };
+
+    syncToFirebase();
+  }, [currentGame, currentStep]);
+
   // --- STATISTIEK BEREKENINGEN ---
   const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goals.length, 0);
   const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
 
   // --- NAVIGATIE LOGICA ---
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 'setup') {
+      // Match gaat van start: zet status in DB op active
+      if (currentGame.id) {
+        const gameRef = doc(db, "games", currentGame.id.toString());
+        await updateDoc(gameRef, { status: 'active' });
+      }
       setCurrentStep('play');
       setActiveQuarterIdx(0);
     } else if (currentStep === 'play') {
@@ -47,6 +78,14 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         setCurrentStep('review');
       }
     } else {
+      // MATCH OPSLAAN: Zet status op finished zodat het LiveScoreboard naar 'Laatste uitslag' verspringt
+      if (currentGame.id) {
+        const gameRef = doc(db, "games", currentGame.id.toString());
+        await updateDoc(gameRef, { 
+          status: 'finished',
+          endTime: new Date().toISOString()
+        });
+      }
       onSave();
     }
   };
@@ -193,7 +232,10 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
       {/* STICKY NAVIGATIE ONDERAAN */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
         <div className="max-w-2xl mx-auto space-y-2">
-          <button onClick={handleNext} className={`w-full text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all ${currentStep === 'review' ? 'bg-green-600' : 'bg-[#04174C]'}`}>
+          <button 
+            onClick={handleNext} 
+            className={`w-full text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
+          >
             {currentStep === 'setup' && 'START WEDSTRIJD'}
             {currentStep === 'play' && (activeQuarterIdx < 3 ? `START KWART ${activeQuarterIdx + 2}` : 'EINDE WEDSTRIJD')}
             {currentStep === 'review' && 'MATCH OPSLAAN'}
@@ -209,11 +251,19 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4" onMouseDown={() => setShowCancelConfirm(false)}>
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
             <div className="mb-6 text-lg font-bold text-[#04174C]">
-              Wil je de wedstrijd annuleren? <span className="text-sm font-normal block mt-1 text-gray-500">Alle huidige data gaat verloren.</span>
+              Wil je de wedstrijd annuleren? <span className="text-sm font-normal block mt-1 text-gray-500">Alle huidige data gaat verloren op het live dashboard.</span>
             </div>
             <div className="flex justify-end gap-3">
               <button className="px-4 py-2 rounded-lg font-semibold text-gray-500 hover:bg-gray-100 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>
-              <button className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={() => { onCancel(); setShowCancelConfirm(false); }}>Ja</button>
+              <button className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={async () => { 
+                // Bij annuleren: verwijder live status of zet op finished
+                if (currentGame.id) {
+                   const gameRef = doc(db, "games", currentGame.id);
+                   await updateDoc(gameRef, { status: 'cancelled' });
+                }
+                onCancel(); 
+                setShowCancelConfirm(false); 
+              }}>Ja</button>
             </div>
           </div>
         </div>
