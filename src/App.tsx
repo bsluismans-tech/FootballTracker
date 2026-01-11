@@ -128,6 +128,7 @@ export default function App() {
         <Settings 
           players={players} 
           parents={parents} 
+          games={games}
         />
       )}
 
