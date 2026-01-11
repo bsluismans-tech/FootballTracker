@@ -220,12 +220,12 @@ export const Settings: React.FC<Props> = ({ players, parents, games }) => {
             <h3 className="text-lg font-black text-[#04174C] mb-2">{confirm.name} verwijderen?</h3>
             <p className="text-xs text-gray-500 mb-6">Deze actie kan niet ongedaan worden gemaakt.</p>
             <div className="flex gap-3">
-              <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setConfirm(null)}>NEE</button>
+              <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setConfirm(null)}>Nee</button>
               <button className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100" onClick={() => {
                 if (confirm.type === 'player') removePlayer(confirm.id);
                 if (confirm.type === 'parent') removeParent(confirm.id);
                 setConfirm(null);
-              }}>JA, WEG</button>
+              }}>Ja</button>
             </div>
           </div>
         </div>
