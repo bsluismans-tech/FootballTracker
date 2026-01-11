@@ -208,6 +208,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
 
       {currentStep === 'play' && (
         <MatchPlay 
+        currentGame={currentGame}
           quarter={currentGame.quarters[activeQuarterIdx]} 
           activeQuarterIdx={activeQuarterIdx}
           presentPlayers={presentPlayers} 
@@ -229,22 +230,40 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         />
       )}
 
-      {/* STICKY NAVIGATIE ONDERAAN */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
-        <div className="max-w-2xl mx-auto space-y-2">
-          <button 
-            onClick={handleNext} 
-            className={`w-full text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
-          >
-            {currentStep === 'setup' && 'START WEDSTRIJD'}
-            {currentStep === 'play' && (activeQuarterIdx < 3 ? `START KWART ${activeQuarterIdx + 2}` : 'EINDE WEDSTRIJD')}
-            {currentStep === 'review' && 'MATCH OPSLAAN'}
-          </button>
-          {currentStep !== 'setup' && (
-            <button onClick={handleBack} className="w-full border-2 border-[#04174C] text-[#04174C] py-4 rounded-xl font-bold active:scale-95 active:opacity-50 text-sm transition-all uppercase tracking-widest">TERUG</button>
-          )}
-        </div>
-      </div>
+
+{/* STICKY NAVIGATIE ONDERAAN */}
+<div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-50">
+  <div className="max-w-2xl mx-auto flex gap-3">
+    
+    {/* TERUG KNOP (Alleen tonen als we niet in setup zitten) */}
+    {currentStep !== 'setup' && (
+      <button 
+        onClick={handleBack} 
+        className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-4 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
+        title="Terug"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+      </button>
+    )}
+
+    {/* START / VOLGENDE / OPSLAAN KNOP */}
+    <button 
+      onClick={handleNext} 
+      className={`flex-1 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
+        ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
+    >
+      {currentStep === 'setup' && 'START WEDSTRIJD'}
+      {currentStep === 'play' && (activeQuarterIdx < 3 ? `Start kwart ${activeQuarterIdx + 2}` : 'Einde wedstrijd')}
+      {currentStep === 'review' && 'MATCH OPSLAAN'}
+    </button>
+    
+  </div>
+</div>
+
+
+
 
       {/* ANNULEER CONFIRMATION POP-UP */}
       {showCancelConfirm && (

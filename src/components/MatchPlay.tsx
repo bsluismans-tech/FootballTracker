@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { UserMinus, Shield, ChevronDown, Target, Handshake, Axe, RefreshCw, ArrowUpCircle, ArrowDownCircle, Check, X as CloseIcon } from 'lucide-react';
-import type { Player, Quarter } from '../types';
+import type { Player, Quarter, Game } from '../types';
 
 interface Props {
   quarter: Quarter;
   activeQuarterIdx: number;
   presentPlayers: Player[];
+  currentGame: Game;
   onUpdateQuarter: (updates: Partial<Quarter>) => void;
   handleButtonClick: (action: () => void) => void;
   handlePressStart: (action: () => void) => void;
@@ -15,13 +16,23 @@ interface Props {
 }
 
 export const MatchPlay: React.FC<Props> = ({ 
-  quarter, activeQuarterIdx, presentPlayers, onUpdateQuarter, 
+  quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter, 
   handleButtonClick, handlePressStart, handlePressEnd, getStatCount, decrementStat 
 }) => {
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
 
   const substitutes = (quarter as any).substitutes || [];
   const substitutions = (quarter as any).substitutions || []; 
+
+  // Bereken totale score over alle kwarten
+  const totalOurGoals = currentGame.quarters.reduce((sum, q) => sum + (q.goals?.length || 0), 0);
+  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
+
+  // Dynamische indeling op basis van Thuis/Uit
+  const leftName = currentGame.isAway ? (currentGame.opponent || 'Tegenstander') : 'Kaulille';
+  const leftScore = currentGame.isAway ? totalOpponentGoals : totalOurGoals;
+  const rightName = currentGame.isAway ? 'Kaulille' : (currentGame.opponent || 'Tegenstander');
+  const rightScore = currentGame.isAway ? totalOurGoals : totalOpponentGoals;
 
   const toggleSubstitute = (playerId: number) => {
     const newSubs = substitutes.includes(playerId)
@@ -42,6 +53,24 @@ export const MatchPlay: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+      
+      {/* ALGEMENE SCORE BOVENAAN (THUIS/UIT DYNAMISCH) */}
+      <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8">
+        <div className="text-center flex-1">
+          <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+            {leftName}
+          </p>
+          <p className="text-3xl font-black tabular-nums">{leftScore}</p>
+        </div>
+        <div className="text-xl font-black opacity-20 px-4">-</div>
+        <div className="text-center flex-1">
+          <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+            {rightName}
+          </p>
+          <p className="text-3xl font-black tabular-nums">{rightScore}</p>
+        </div>
+      </div>
+
       {/* WISSELSPELERS SECTIE */}
       <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
         <div className="flex justify-between items-center mb-2">
