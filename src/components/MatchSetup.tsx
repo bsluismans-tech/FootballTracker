@@ -1,21 +1,18 @@
 import React from 'react';
-import { Home, MapPin, Calendar, Users, UserCheck } from 'lucide-react';
-import type { Player, Parent, Game } from '../types';
+import { Home, MapPin, Calendar, Users } from 'lucide-react';
+import type { Player, Game } from '../types';
 
 interface Props {
   currentGame: Game;
   players: Player[];
-  parents: Parent[];
   onUpdateGame: (game: Game) => void;
   formatDateForInput: (date: string) => string;
   handleDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const MatchSetup: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, formatDateForInput, handleDateChange }) => {
+export const MatchSetup: React.FC<Props> = ({ currentGame, players, onUpdateGame, formatDateForInput, handleDateChange }) => {
   
-  // Sorteer spelers en ouders alfabetisch op naam
   const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedParents = [...parents].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -38,15 +35,6 @@ export const MatchSetup: React.FC<Props> = ({ currentGame, players, parents, onU
         <div className="flex flex-wrap gap-2">
           {sortedPlayers.map(p => (
             <button key={p.id} onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})} className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}>{p.name}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
-        <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><UserCheck size={18}/> Toeschouwers</h3>
-        <div className="flex flex-wrap gap-2">
-          {sortedParents.map(p => (
-            <button key={p.id} onClick={() => onUpdateGame({...currentGame, parentsPresent: currentGame.parentsPresent.includes(p.id) ? currentGame.parentsPresent.filter(id => id !== p.id) : [...currentGame.parentsPresent, p.id]})} className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.parentsPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}>{p.name}</button>
           ))}
         </div>
       </div>

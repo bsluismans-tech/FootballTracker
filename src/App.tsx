@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Player, Parent, Game } from './types';
+import type { Player, Game } from './types';
 import { Dashboard } from './components/Dashboard';
 import { Navigation } from './components/Navigation';
 import { GameHistory } from './components/GameHistory';
@@ -12,7 +12,6 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from '
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [parents, setParents] = useState<Parent[]>([]);
   const [games, setGames] = useState<Game[]>([]);
 
   const [view, setView] = useState('dashboard');
@@ -25,11 +24,6 @@ export default function App() {
       setPlayers(snapshot.docs.map(doc => ({ ...doc.data() } as Player)));
     });
 
-    // Luister naar Ouders
-    const unsubParents = onSnapshot(collection(db, "parents"), (snapshot) => {
-      setParents(snapshot.docs.map(doc => ({ ...doc.data() } as Parent)));
-    });
-
     // Luister naar Wedstrijden (gesorteerd op datum)
     const qGames = query(collection(db, "games"), orderBy("date", "desc"));
     const unsubGames = onSnapshot(qGames, (snapshot) => {
@@ -38,7 +32,6 @@ export default function App() {
 
     return () => {
       unsubPlayers();
-      unsubParents();
       unsubGames();
     };
   }, []);
@@ -117,7 +110,6 @@ export default function App() {
       {view === 'dashboard' && (
         <Dashboard 
           players={players}
-          parents={parents} 
           games={games} 
           startNewGame={startNewGame} 
           canStart={players.length > 0} 
@@ -127,7 +119,6 @@ export default function App() {
       {view === 'settings' && (
         <Settings 
           players={players} 
-          parents={parents} 
           games={games}
         />
       )}
@@ -147,7 +138,6 @@ export default function App() {
         <LiveMatch 
           currentGame={currentGame} 
           players={players} 
-          parents={parents}
           onUpdateGame={setCurrentGame} 
           onSave={saveGame}
           onCancel={() => { setCurrentGame(null); setView('dashboard'); }}

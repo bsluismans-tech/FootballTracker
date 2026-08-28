@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Target, Plus, Trophy, Shield, UserCheck, Activity, Handshake, Axe, Users, Gamepad2, Megaphone } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2 } from 'lucide-react';
 import { LiveScoreboard } from './LiveScoreboard';
-import type { Player, Game, Parent } from '../types';
+import type { Player, Game } from '../types';
 
 interface Props {
   players: Player[];
-  parents: Parent[];
   games: Game[];
   startNewGame: () => void;
   canStart: boolean;
 }
 
-export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGame, canStart }) => {
+export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart }) => {
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
 
@@ -55,7 +54,6 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
   }, []);
 
   const getPlayerName = (id: number) => players.find(p => p.id === id)?.name || 'Onbekend';
-  const getParentName = (id: number) => parents.find(p => p.id === id)?.name || 'Onbekend';
 
   const finishedGames = games.filter(g => g.status === 'finished');
 
@@ -71,7 +69,6 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
     
     acc.goalsFor += ours;
     acc.goalsAgainst += theirs;
-    acc.totalSpectators += (game.parentsPresent?.length || 0);
     
     game.quarters.forEach(q => {
       acc.totalAssists += ((q as any).assists || []).length;
@@ -87,8 +84,7 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
   }, { 
     wins: 0, draws: 0, losses: 0, 
     goalsFor: 0, goalsAgainst: 0, 
-    totalAssists: 0, totalTackles: 0, totalSaves: 0,
-    totalSpectators: 0 
+    totalAssists: 0, totalTackles: 0, totalSaves: 0
   });
 
   const goalDiff = stats.goalsFor - stats.goalsAgainst;
@@ -121,15 +117,11 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
   const sortedTackles = Object.entries(tacklesByPlayer).map(([id, count]) => ({ id: parseInt(id), count })).sort((a, b) => b.count - a.count).slice(0, 3);
   const topKeepers = Object.entries(savesByKeeper).map(([id, saves]) => ({ id: parseInt(id), saves })).sort((a, b) => b.saves - a.saves).slice(0, 3);
 
-  const parentAttendance: Record<number, number> = {};
-  finishedGames.forEach(g => g.parentsPresent?.forEach(pId => parentAttendance[pId] = (parentAttendance[pId] || 0) + 1));
-  const topParents = Object.entries(parentAttendance).map(([id, count]) => ({ id: parseInt(id), count })).sort((a, b) => b.count - a.count).slice(0, 3);
-
   return (
     <div className="max-w-2xl mx-auto p-4 pb-32 select-none space-y-6">
       {/* Header */}
       <div className="px-1 pt-2">
-        <h1 className="text-3xl font-black text-[#04174C] tracking-tight text-left leading-none uppercase">U9 Kaulille</h1>
+        <h1 className="text-3xl font-black text-[#04174C] tracking-tight text-left leading-none uppercase">U10 Kaulille</h1>
       </div>
 
       {/* Live Scoreboard / Laatste Resultaat */}
@@ -210,7 +202,6 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
               { label: 'Assists', value: stats.totalAssists, icon: <Handshake size={16} />, color: 'text-yellow-500' },
               { label: 'Tackles', value: stats.totalTackles, icon: <Axe size={16} />, color: 'text-blue-400' },
               { label: 'Saves', value: stats.totalSaves, icon: <Shield size={16} />, color: 'text-emerald-500' },
-              { label: 'Fans', value: stats.totalSpectators, icon: <UserCheck size={16} />, color: 'text-purple-500' },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center">
                 <div className="flex items-center gap-1.5 mb-0.5">
@@ -256,7 +247,7 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
           </div>
         )}
 
-        {/* Keepers en Ouders grid */}
+        {/* Keepers en tackles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {topKeepers.length > 0 && (
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
@@ -295,93 +286,30 @@ export const Dashboard: React.FC<Props> = ({ players, parents, games, startNewGa
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          {sortedAssists.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Handshake size={18} className="text-yellow-600" /> Assistenkoning
-              </div>
-              <div className="space-y-3">
-                {sortedAssists.map((item, index) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
-                    <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">
-                      {item.count} assists
-                    </span>
-                  </div>
-                ))}
-              </div>
+        {sortedAssists.length > 0 && (
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+            <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+              <Handshake size={18} className="text-yellow-600" /> Assistenkoning
             </div>
-          )}
-
-          {topParents.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <UserCheck size={18} className="text-purple-500" /> Superfans
-              </div>
-              <div className="space-y-3">
-                {topParents.map((parent, index) => (
-                  <div key={parent.id} className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-700">{index + 1}. {getParentName(parent.id)}</span>
-                    <span className="text-xs font-bold bg-purple-50 text-purple-700 px-2 py-1 rounded-lg">
-                      {parent.count} matchen
-                    </span>                                        
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-3">
+              {sortedAssists.map((item, index) => (
+                <div key={item.id} className="flex justify-between items-center text-sm">
+                  <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
+                  <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">
+                    {item.count} assists
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Supertrainers Sectie */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-50 relative overflow-hidden">
-        <div className="flex items-center gap-2 mb-6 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-          <Megaphone size={18} className="text-blue-500" /> Topcoaches
-        </div>
-        
-        <div className="flex justify-around items-center gap-4">
-          {/* Trainer 1: Stijn */}
-          <div className="flex flex-col items-center group">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
-              <div className="relative w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100">
-                <img 
-                  src="/Stijn.PNG" 
-                  alt="Stijn" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://ui-avatars.com/api/?name=Stijn&background=04174C&color=fff")}
-                />
-              </div>
-            </div>
-            <h3 className="mt-3 font-black text-[#04174C] text-sm">Stijn</h3>
-            <p className="text-[10px] uppercase font-bold text-blue-400 tracking-widest">Coach</p>
           </div>
-
-          {/* Trainer 2: Mathy */}
-          <div className="flex flex-col items-center group">
-            <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
-              <div className="relative w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100">
-                <img 
-                  src="/Mathy.jpg" 
-                  alt="Mathy" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = "https://ui-avatars.com/api/?name=Mathy&background=04174C&color=fff")}
-                />
-              </div>
-            </div>
-            <h3 className="mt-3 font-black text-[#04174C] text-sm">Mathy</h3>
-            <p className="text-[10px] uppercase font-bold text-blue-400 tracking-widest">Coach</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Footer */}
       <div className="mt-12 flex flex-col items-center gap-3">
         <img src="/clublogo.png" alt="Club Logo" className="max-w-[70px] object-contain opacity-40 grayscale hover:grayscale-0 transition-all duration-500" />
         <div className="flex flex-col items-center">
-          <p className="text-[10px] text-[#04174C]/30 font-black uppercase tracking-[0.2em]">U9 Kaulille FC</p>
+          <p className="text-[10px] text-[#04174C]/30 font-black uppercase tracking-[0.2em]">U10 Kaulille FC</p>
           <p className="text-[9px] text-[#04174C]/20 font-bold uppercase tracking-widest mt-0.5">Seizoen {new Date().getFullYear()} - {new Date().getFullYear() + 1}</p>
         </div>
       </div>

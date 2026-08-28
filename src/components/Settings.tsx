@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, User, Users, UserCheck, X, Gamepad2, Star, Target, Handshake, Axe, Shield } from 'lucide-react';
-import type { Player, Parent, Game } from '../types';
+import { Plus, Trash2, User, Users, X, Gamepad2, Star, Target, Handshake, Axe, Shield } from 'lucide-react';
+import type { Player, Game } from '../types';
 import { db } from '../firebase';
-import { doc, setDoc, deleteDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
 
 interface Props {
   players: Player[];
-  parents: Parent[];
   games: Game[];
 }
 
@@ -47,7 +46,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <Star size={40} className="text-yellow-400 fill-yellow-400" />
           </div>
           <h3 className="text-2xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">Ploeglid U9 Kaulille</p>
+          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">Speler U9 Kaulille</p>
         </div>
 
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
@@ -84,11 +83,10 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
 };
 
 // --- MAIN SETTINGS COMPONENT ---
-export const Settings: React.FC<Props> = ({ players, parents, games }) => {
+export const Settings: React.FC<Props> = ({ players, games }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const [confirm, setConfirm] = useState<{ type: 'player' | 'parent', id: number, name: string } | null>(null);
+  const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
-  const [parentInputs, setParentInputs] = useState<Record<number, string>>({});
 
   const addPlayer = async () => {
     if (!playerName.trim()) return;
@@ -108,20 +106,6 @@ export const Settings: React.FC<Props> = ({ players, parents, games }) => {
       querySnapshot.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
     } catch (e) { console.error(e); }
-  };
-
-  const addParent = async (playerId: number) => {
-    const name = (parentInputs[playerId] || '').trim();
-    if (!name) return;
-    const newId = Date.now();
-    try {
-      await setDoc(doc(db, "parents", newId.toString()), { id: newId, name, playerId });
-      setParentInputs({ ...parentInputs, [playerId]: '' });
-    } catch (e) { console.error(e); }
-  };
-
-  const removeParent = async (parentId: number) => {
-    try { await deleteDoc(doc(db, "parents", parentId.toString())); } catch (e) { console.error(e); }
   };
 
   return (
@@ -150,62 +134,30 @@ export const Settings: React.FC<Props> = ({ players, parents, games }) => {
 
       {/* Lijst van spelers */}
       <section className="space-y-4">
-        {players.sort((a,b) => a.name.localeCompare(b.name)).map(player => {
-          const playerParents = parents.filter(p => p.playerId === player.id);
-          return (
-            <div key={player.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 flex justify-between items-center bg-gray-50/50">
-                <div 
-                  onClick={() => setSelectedPlayer(player)}
-                  className="flex items-center gap-3 cursor-pointer group"
-                >
-                  <div className="w-10 h-10 bg-white border-2 border-blue-100 rounded-full flex items-center justify-center text-[#04174C] shadow-sm group-hover:border-blue-400 transition-colors">
-                    <User size={20} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[#04174C]">{player.name}</span>
-                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Bekijk stats</span>
-                  </div>
+        {players.sort((a,b) => a.name.localeCompare(b.name)).map(player => (
+          <div key={player.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 flex justify-between items-center">
+              <div 
+                onClick={() => setSelectedPlayer(player)}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <div className="w-10 h-10 bg-white border-2 border-blue-100 rounded-full flex items-center justify-center text-[#04174C] shadow-sm group-hover:border-blue-400 transition-colors">
+                  <User size={20} />
                 </div>
-                <button
-                  onClick={() => setConfirm({ type: 'player', id: player.id, name: player.name })}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-2"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-3">
-                <div className="space-y-2">
-                  {playerParents.map(parent => (
-                    <div key={parent.id} className="flex items-center justify-between bg-white border border-gray-100 px-3 py-2 rounded-xl text-xs font-bold text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <UserCheck size={14} className="text-green-500" />
-                        {parent.name}
-                      </div>
-                      <button onClick={() => setConfirm({ type: 'parent', id: parent.id, name: parent.name })} className="text-gray-300 hover:text-red-500">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    value={parentInputs[player.id] || ''}
-                    onChange={e => setParentInputs({ ...parentInputs, [player.id]: e.target.value })}
-                    onKeyDown={e => e.key === 'Enter' && addParent(player.id)}
-                    placeholder="Ouder toevoegen..."
-                    className="flex-1 p-2 bg-gray-50 border-none rounded-lg text-xs font-bold outline-none"
-                  />
-                  <button onClick={() => addParent(player.id)} className="text-[#04174C] p-2">
-                    <Plus size={18} strokeWidth={3} />
-                  </button>
+                <div className="flex flex-col">
+                  <span className="font-bold text-[#04174C]">{player.name}</span>
+                  <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Bekijk stats</span>
                 </div>
               </div>
+              <button
+                onClick={() => setConfirm({ id: player.id, name: player.name })}
+                className="text-gray-300 hover:text-red-500 transition-colors p-2"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </section>
 
       {/* Modals */}
@@ -222,8 +174,7 @@ export const Settings: React.FC<Props> = ({ players, parents, games }) => {
             <div className="flex gap-3">
               <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setConfirm(null)}>Nee</button>
               <button className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100" onClick={() => {
-                if (confirm.type === 'player') removePlayer(confirm.id);
-                if (confirm.type === 'parent') removeParent(confirm.id);
+                removePlayer(confirm.id);
                 setConfirm(null);
               }}>Ja</button>
             </div>

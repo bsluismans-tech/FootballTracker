@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Player, Parent, Game } from '../types';
+import type { Player, Game } from '../types';
 
 // Importeer de sub-componenten
 import { MatchSetup } from './MatchSetup';
@@ -12,7 +12,6 @@ import { MatchReview } from './MatchReview';
 interface Props {
   currentGame: Game;
   players: Player[];
-  parents: Parent[];
   onUpdateGame: (game: Game) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -20,7 +19,7 @@ interface Props {
 
 type Step = 'setup' | 'play' | 'review';
 
-export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUpdateGame, onSave, onCancel }) => {
+export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame, onSave, onCancel }) => {
   const [currentStep, setCurrentStep] = useState<Step>('setup');
   const [activeQuarterIdx, setActiveQuarterIdx] = useState(0);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -199,7 +198,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, parents, onUp
         <MatchSetup 
           currentGame={currentGame} 
           players={players} 
-          parents={parents} 
           onUpdateGame={onUpdateGame} 
           formatDateForInput={formatDateForInput} 
           handleDateChange={handleDateChange} 
