@@ -16,7 +16,7 @@ interface Props {
   viewMode: 'list' | 'quick';
 }
 
-type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler';
+type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler' | 'select-outgoing';
 
 export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
@@ -111,7 +111,7 @@ export const MatchPlay: React.FC<Props> = ({
           </h3>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {sortedPresentPlayers.filter(p => substitutes.includes(p.id) || activeOnField.length > 5).map(p => (
+          {sortedPresentPlayers.filter(p => substitutes.includes(p.id) || activeOnField.length > 8).map(p => (
             <button key={p.id} onClick={() => toggleSubstitute(p.id)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${substitutes.includes(p.id) ? 'bg-[#04174C] text-white shadow-sm' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}>
               {p.name}
             </button>
@@ -271,6 +271,36 @@ export const MatchPlay: React.FC<Props> = ({
             </div>
           )}
 
+          {/* WISSEL-KNOP ONDER DE TEGELS */}
+          {quickStep === 'menu' && (
+            <button
+              onClick={() => setQuickStep('select-outgoing')}
+              className="w-full mt-3 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <RefreshCw size={14} /> Wissel
+            </button>
+          )}
+
+          {quickStep === 'select-outgoing' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie gaat eraf?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {activeOnField.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setWisselTarget(p.id); setQuickStep('menu'); }}
+                    className="h-20 px-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {quickStep === 'select-scorer' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -298,7 +328,7 @@ export const MatchPlay: React.FC<Props> = ({
                 <button onClick={() => { setPendingScorerId(null); setQuickStep('menu'); }} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {sortedPresentPlayers.map(p => (
+                {activeOnField.map(p => (
                   <button
                     key={p.id}
                     onClick={() => {

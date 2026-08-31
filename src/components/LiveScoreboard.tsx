@@ -41,19 +41,17 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
         )}
 
         {/* Resultaat Badge (Alleen bij afgeronde wedstrijd) */}
-      {!isLive && (
-        <div className="mt-4 flex justify-center">
+        {!isLive && (
           <div className={`text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest ${
-            ourGoals > opponentGoals ? 'bg-green-100 text-green-700' : 
-            ourGoals < opponentGoals ? 'bg-red-100 text-red-700' : 
+            ourGoals > opponentGoals ? 'bg-green-100 text-green-700' :
+            ourGoals < opponentGoals ? 'bg-red-100 text-red-700' :
             'bg-gray-100 text-gray-600'
           }`}>
-            {ourGoals > opponentGoals ? 'GEWONNEN 🎉' : 
-             ourGoals < opponentGoals ? 'VERLOREN ⚽️' : 
+            {ourGoals > opponentGoals ? 'GEWONNEN 🎉' :
+             ourGoals < opponentGoals ? 'VERLOREN ⚽️' :
              'GELIJKSPEL 🤝'}
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       <div className="flex items-center justify-around">
