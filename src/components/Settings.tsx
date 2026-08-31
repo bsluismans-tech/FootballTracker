@@ -7,6 +7,7 @@ import { doc, setDoc, collection, writeBatch, query, where, getDocs } from 'fire
 interface Props {
   players: Player[];
   games: Game[];
+  isAdminMode: boolean;
 }
 
 // --- SUBCOMPONENT: PLAYER STATS MODAL ---
@@ -46,7 +47,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <Star size={40} className="text-yellow-400 fill-yellow-400" />
           </div>
           <h3 className="text-2xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">Speler U9 Kaulille</p>
+          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">Speler U10 Kaulille</p>
         </div>
 
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
@@ -83,7 +84,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
 };
 
 // --- MAIN SETTINGS COMPONENT ---
-export const Settings: React.FC<Props> = ({ players, games }) => {
+export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
@@ -115,46 +116,48 @@ export const Settings: React.FC<Props> = ({ players, games }) => {
         <h2 className="text-2xl font-black text-[#04174C] tracking-tight">Ploeg</h2>
       </header>
 
-      {/* Input Speler */}
-      <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Nieuwe speler</h3>
-        <div className="flex gap-2">
-          <input
-            value={playerName}
-            onChange={e => setPlayerName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addPlayer()}
-            placeholder="Naam van de speler..."
-            className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#04174C]/10 transition-all"
-          />
-          <button onClick={addPlayer} className="bg-[#04174C] text-white px-4 rounded-xl shadow-lg active:scale-95 transition-all">
-            <Plus size={20} strokeWidth={3} />
-          </button>
-        </div>
-      </section>
+      {/* Input Speler (alleen zichtbaar in Admin mode) */}
+      {isAdminMode && (
+        <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Nieuwe speler</h3>
+          <div className="flex gap-2">
+            <input
+              value={playerName}
+              onChange={e => setPlayerName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addPlayer()}
+              placeholder="Naam van de speler..."
+              className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#04174C]/10 transition-all"
+            />
+            <button onClick={addPlayer} className="bg-[#04174C] text-white px-4 rounded-xl shadow-lg active:scale-95 transition-all">
+              <Plus size={20} strokeWidth={3} />
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Lijst van spelers */}
       <section className="space-y-4">
         {players.sort((a,b) => a.name.localeCompare(b.name)).map(player => (
-          <div key={player.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div
+            key={player.id}
+            onClick={() => setSelectedPlayer(player)}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group"
+          >
             <div className="p-4 flex justify-between items-center">
-              <div 
-                onClick={() => setSelectedPlayer(player)}
-                className="flex items-center gap-3 cursor-pointer group"
-              >
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white border-2 border-blue-100 rounded-full flex items-center justify-center text-[#04174C] shadow-sm group-hover:border-blue-400 transition-colors">
                   <User size={20} />
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[#04174C]">{player.name}</span>
-                  <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Bekijk stats</span>
-                </div>
+                <span className="font-bold text-[#04174C]">{player.name}</span>
               </div>
-              <button
-                onClick={() => setConfirm({ id: player.id, name: player.name })}
-                className="text-gray-300 hover:text-red-500 transition-colors p-2"
-              >
-                <Trash2 size={18} />
-              </button>
+              {isAdminMode && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirm({ id: player.id, name: player.name }); }}
+                  className="text-gray-300 hover:text-red-500 transition-colors p-2"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           </div>
         ))}

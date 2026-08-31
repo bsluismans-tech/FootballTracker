@@ -32,9 +32,15 @@ export const MatchSetup: React.FC<Props> = ({ currentGame, players, onUpdateGame
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
         <h3 className="font-bold mb-3 flex items-center gap-2 text-[#04174C]"><Users size={18}/> Wie speelt er?</h3>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {sortedPlayers.map(p => (
-            <button key={p.id} onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})} className={`px-4 py-2 rounded-full text-sm font-medium transition ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-600'}`}>{p.name}</button>
+            <button
+              key={p.id}
+              onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})}
+              className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center leading-tight transition active:scale-[0.97] ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
+            >
+              {p.name}
+            </button>
           ))}
         </div>
       </div>

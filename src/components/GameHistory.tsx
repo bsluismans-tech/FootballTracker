@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserCheck, Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Gamepad2, Edit3 } from 'lucide-react';
+import { Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Gamepad2, Edit3 } from 'lucide-react';
 import type { Game, Player } from '../types';
 
 interface Props {
@@ -9,9 +9,10 @@ interface Props {
   onEditGame: (game: Game) => void;
   startNewGame: () => void;
   canStart: boolean;
+  isAdminMode: boolean;
 }
 
-export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onEditGame, startNewGame, canStart }) => {
+export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onEditGame, startNewGame, canStart, isAdminMode }) => {
   const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
   
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; opponent: string; date: string } | null>(null);
@@ -133,15 +134,6 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white p-2 rounded-lg border border-gray-100">
-                          <Users size={14} className="text-blue-500" /> {g.playersPresent?.length || 0} spelers
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white p-2 rounded-lg border border-gray-100">
-                          <UserCheck size={14} className="text-purple-500" /> {g.parentsPresent?.length || 0} ouders
-                        </div>
-                      </div>
-
                       {/* Notities */}
                       {g.notes && (
                         <div className="bg-yellow-50/70 border border-yellow-100 p-3 rounded-xl mb-4 text-sm italic text-gray-700">
@@ -149,21 +141,23 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                         </div>
                       )}
 
-                      {/* Actie Knoppen */}
-                      <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-4">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onEditGame(g); }}
-                          className="flex items-center gap-1.5 text-[#04174C] hover:text-blue-700 font-bold text-[10px] uppercase tracking-wider transition-colors"
-                        >
-                          <Edit3 size={14} /> Bewerk wedstrijd
-                        </button>
-                        <button 
-                          onClick={(e) => openConfirm(e, g)}
-                          className="flex items-center gap-1.5 text-red-400 hover:text-red-600 font-bold text-[10px] uppercase tracking-wider transition-colors"
-                        >
-                          <Trash2 size={14} /> Verwijder wedstrijd
-                        </button>
-                      </div>
+                      {/* Actie Knoppen (alleen zichtbaar in Admin mode) */}
+                      {isAdminMode && (
+                        <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onEditGame(g); }}
+                            className="flex items-center gap-1.5 text-[#04174C] hover:text-blue-700 font-bold text-[10px] uppercase tracking-wider transition-colors"
+                          >
+                            <Edit3 size={14} /> Bewerk wedstrijd
+                          </button>
+                          <button
+                            onClick={(e) => openConfirm(e, g)}
+                            className="flex items-center gap-1.5 text-red-400 hover:text-red-600 font-bold text-[10px] uppercase tracking-wider transition-colors"
+                          >
+                            <Trash2 size={14} /> Verwijder wedstrijd
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -172,18 +166,20 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
         )}
       </div>
 
-      {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP */}
-      <div className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
-        <div className="max-w-2xl mx-auto">
-          <button
-            onClick={startNewGame}
-            disabled={!canStart}
-            className="w-full bg-white border-2 border-[#04174C] text-[#04174C] py-3.5 rounded-xl shadow-xl hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400 transition-all active:scale-[0.98] font-black text-sm uppercase tracking-widest"
-          >
-            Nieuwe wedstrijd
-          </button>
+      {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) */}
+      {isAdminMode && (
+        <div className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={startNewGame}
+              disabled={!canStart}
+              className="w-full bg-white border-2 border-[#04174C] text-[#04174C] py-3.5 rounded-xl shadow-xl hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-400 transition-all active:scale-[0.98] font-black text-sm uppercase tracking-widest"
+            >
+              Nieuwe wedstrijd
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* CUSTOM CONFIRMATION POP-UP */}
       {confirmDelete && (

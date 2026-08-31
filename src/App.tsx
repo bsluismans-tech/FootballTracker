@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Player, Game } from './types';
 import { Dashboard } from './components/Dashboard';
 import { Navigation } from './components/Navigation';
@@ -8,7 +8,7 @@ import { Settings } from './components/Settings';
 
 // Importeer Firebase config en Firestore functies
 import { db } from './firebase'; 
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -16,6 +16,31 @@ export default function App() {
 
   const [view, setView] = useState('dashboard');
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
+  const [editBackup, setEditBackup] = useState<Game | null>(null);
+  const [editReturnView, setEditReturnView] = useState<'dashboard' | 'history'>('dashboard');
+
+  // ADMIN MODE: standaard uit, activeren/deactiveren door 3x op het clublogo te tikken
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const logoTapCountRef = useRef(0);
+  const logoTapTimerRef = useRef<number | null>(null);
+
+  const handleLogoTap = () => {
+    logoTapCountRef.current += 1;
+
+    if (logoTapTimerRef.current) {
+      window.clearTimeout(logoTapTimerRef.current);
+      logoTapTimerRef.current = null;
+    }
+
+    if (logoTapCountRef.current >= 3) {
+      setIsAdminMode(prev => !prev);
+      logoTapCountRef.current = 0;
+    } else {
+      logoTapTimerRef.current = window.setTimeout(() => {
+        logoTapCountRef.current = 0;
+      }, 1000);
+    }
+  };
 
   // 1. DATA OPHALEN UIT FIRESTORE (Real-time)
   useEffect(() => {
@@ -45,7 +70,9 @@ export default function App() {
     }
   };
 
-  const editGame = (game: Game) => {
+  const editGame = (game: Game, returnView: 'dashboard' | 'history' = 'history') => {
+    setEditBackup(JSON.parse(JSON.stringify(game)));
+    setEditReturnView(returnView);
     setCurrentGame(game);
     setView('game');
   };
@@ -81,6 +108,8 @@ export default function App() {
     try {
       // We maken het document direct aan in de DB zodat LiveMatch kan syncen
       await setDoc(doc(db, "games", newId.toString()), game);
+      setEditBackup(null);
+      setEditReturnView('dashboard');
       setCurrentGame(game);
       setView('game');
     } catch (error) {
@@ -97,6 +126,7 @@ export default function App() {
         const finalGame = { ...currentGame, status: 'finished' };
         await setDoc(doc(db, "games", currentGame.id.toString()), finalGame);
         setCurrentGame(null);
+        setEditBackup(null);
         setView('dashboard');
       } catch (error) {
         console.error("Fout bij opslaan:", error);
@@ -108,29 +138,34 @@ export default function App() {
   return (
     <div className={`min-h-screen ${view === 'dashboard' ? 'bg-[#04174C]/5' : 'bg-gray-50'} pb-24`}>
       {view === 'dashboard' && (
-        <Dashboard 
+        <Dashboard
           players={players}
-          games={games} 
-          startNewGame={startNewGame} 
-          canStart={players.length > 0} 
+          games={games}
+          startNewGame={startNewGame}
+          canStart={players.length > 0}
+          isAdminMode={isAdminMode}
+          onLogoTap={handleLogoTap}
+          onEditGame={(game) => editGame(game, 'dashboard')}
         />
       )}
 
       {view === 'settings' && (
-        <Settings 
-          players={players} 
+        <Settings
+          players={players}
           games={games}
+          isAdminMode={isAdminMode}
         />
       )}
 
       {view === 'history' && (
-        <GameHistory 
-          games={games} 
-          players={players} 
-          onDeleteGame={deleteGame} 
+        <GameHistory
+          games={games}
+          players={players}
+          onDeleteGame={deleteGame}
           onEditGame={editGame}
           startNewGame={startNewGame}
           canStart={players.length > 0}
+          isAdminMode={isAdminMode}
         />
       )}
       
@@ -140,7 +175,25 @@ export default function App() {
           players={players} 
           onUpdateGame={setCurrentGame} 
           onSave={saveGame}
-          onCancel={() => { setCurrentGame(null); setView('dashboard'); }}
+          onCancel={async () => {
+            if (currentGame) {
+              try {
+                const gameRef = doc(db, "games", currentGame.id.toString());
+                if (editBackup) {
+                  // Bewerken geannuleerd: oorspronkelijke (finished) wedstrijd terugzetten
+                  await setDoc(gameRef, editBackup);
+                } else {
+                  await updateDoc(gameRef, { status: 'cancelled' });
+                }
+              } catch (error) {
+                console.error("Fout bij annuleren:", error);
+              }
+            }
+            const returnView = editBackup ? editReturnView : 'dashboard';
+            setCurrentGame(null);
+            setEditBackup(null);
+            setView(returnView);
+          }}
         />
       )}
 

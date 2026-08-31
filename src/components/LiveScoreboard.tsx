@@ -32,7 +32,14 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
         }`}>
           {isLive ? '● Live' : 'Laatste wedstrijd'}
         </span>
-        
+
+        {/* Huidig kwart (alleen tijdens een live wedstrijd) */}
+        {isLive && game.currentQuarter && (
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest bg-white/10 text-white">
+            Q{game.currentQuarter}
+          </span>
+        )}
+
         {/* Resultaat Badge (Alleen bij afgeronde wedstrijd) */}
       {!isLive && (
         <div className="mt-4 flex justify-center">

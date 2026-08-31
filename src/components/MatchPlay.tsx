@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserMinus, Shield, ChevronDown, Target, Handshake, Axe, RefreshCw, ArrowUpCircle, ArrowDownCircle, Check, X as CloseIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserMinus, Shield, ChevronDown, Target, Handshake, Axe, RefreshCw, ArrowUpCircle, ArrowDownCircle, Check, X as CloseIcon, Goal } from 'lucide-react';
 import type { Player, Quarter, Game } from '../types';
 
 interface Props {
@@ -13,13 +13,45 @@ interface Props {
   handlePressEnd: () => void;
   getStatCount: (playerId: number, statArray: number[] | undefined) => number;
   decrementStat: (idx: number, field: string, playerId?: number) => void;
+  viewMode: 'list' | 'quick';
 }
 
-export const MatchPlay: React.FC<Props> = ({ 
-  quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter, 
-  handleButtonClick, handlePressStart, handlePressEnd, getStatCount, decrementStat 
+type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler';
+
+export const MatchPlay: React.FC<Props> = ({
+  quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
+  handleButtonClick, handlePressStart, handlePressEnd, getStatCount, decrementStat, viewMode
 }) => {
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
+  const [quickStep, setQuickStep] = useState<QuickStep>('menu');
+  const [pendingScorerId, setPendingScorerId] = useState<number | null>(null);
+  // Onthoudt of het laatst via "Snel invoeren" toegevoegde doelpunt een assist had,
+  // zodat long-press op Doelpunt ook de juiste assist mee ongedaan kan maken.
+  const lastQuickGoalHadAssistRef = useRef<boolean | null>(null);
+
+  // Reset de "Snel invoeren"-flow bij het wisselen van kwart of weergave
+  useEffect(() => {
+    setQuickStep('menu');
+    setPendingScorerId(null);
+    lastQuickGoalHadAssistRef.current = null;
+  }, [activeQuarterIdx, viewMode]);
+
+  // Maakt het laatst toegevoegde doelpunt (en eventueel de bijhorende assist) ongedaan
+  const undoLastQuickGoal = () => {
+    if (quarter.goals.length === 0) return;
+    const updates: Partial<Quarter> = { goals: quarter.goals.slice(0, -1) };
+    if (lastQuickGoalHadAssistRef.current && quarter.assists.length > 0) {
+      updates.assists = quarter.assists.slice(0, -1);
+    }
+    onUpdateQuarter(updates);
+    lastQuickGoalHadAssistRef.current = null;
+  };
+
+  // Maakt de laatst toegevoegde tackle ongedaan
+  const undoLastQuickTackle = () => {
+    if ((quarter.tackles || []).length === 0) return;
+    onUpdateQuarter({ tackles: quarter.tackles.slice(0, -1) });
+  };
 
   const substitutes = (quarter as any).substitutes || [];
   const substitutions = (quarter as any).substitutions || []; 
@@ -151,9 +183,12 @@ export const MatchPlay: React.FC<Props> = ({
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#04174C] pointer-events-none" size={16} />
         </div>
-        <button onClick={() => handleButtonClick(() => onUpdateQuarter({ saves: quarter.saves + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'saves'))} onTouchEnd={handlePressEnd} className="flex-[0.8] py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 text-sm"><Shield size={16} />{quarter.saves} Reddingen</button>
+        {viewMode === 'list' && (
+          <button onClick={() => handleButtonClick(() => onUpdateQuarter({ saves: quarter.saves + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'saves'))} onTouchEnd={handlePressEnd} className="flex-[0.8] py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 text-sm"><Shield size={16} />{quarter.saves} Reddingen</button>
+        )}
       </div>
 
+      {viewMode === 'list' && (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
         {allFieldView.map(p => {
           const gc = getStatCount(p.id, quarter.goals);
@@ -186,11 +221,150 @@ export const MatchPlay: React.FC<Props> = ({
           );
         })}
       </div>
+      )}
 
-      <div className="mt-4 bg-red-50/50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
-        <p className="flex-1 text-xs font-bold text-red-700 uppercase tracking-wider ml-1">Tegendoelpunten</p>
-        <button onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoals: quarter.opponentGoals + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'opponentGoals'))} onTouchEnd={handlePressEnd} className={`flex-[0.8] py-3 rounded-lg font-bold flex items-center justify-center gap-2 text-sm ${quarter.opponentGoals > 0 ? 'bg-red-600 text-white shadow-md' : 'bg-white text-red-600 border border-red-200'}`}><Target size={18} />{quarter.opponentGoals} Goals</button>
-      </div>
+      {/* SNEL INVOEREN: 4 grote actieknoppen i.p.v. de spelerslijst */}
+      {viewMode === 'quick' && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          {quickStep === 'menu' && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleButtonClick(() => setQuickStep('select-scorer'))}
+                onTouchStart={() => handlePressStart(undoLastQuickGoal)}
+                onTouchEnd={handlePressEnd}
+                className="h-28 rounded-2xl bg-yellow-50 border-2 border-yellow-100 text-yellow-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <Goal size={24} />
+                <span className="text-2xl leading-none">{quarter.goals.length}</span>
+                <span className="text-[10px]">Doelpunt</span>
+              </button>
+              <button
+                onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoals: quarter.opponentGoals + 1 }))}
+                onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'opponentGoals'))}
+                onTouchEnd={handlePressEnd}
+                className="h-28 rounded-2xl bg-red-50 border-2 border-red-100 text-red-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <Target size={24} />
+                <span className="text-2xl leading-none">{quarter.opponentGoals}</span>
+                <span className="text-[10px]">Tegendoelpunt</span>
+              </button>
+              <button
+                onClick={() => handleButtonClick(() => setQuickStep('select-tackler'))}
+                onTouchStart={() => handlePressStart(undoLastQuickTackle)}
+                onTouchEnd={handlePressEnd}
+                className="h-28 rounded-2xl bg-blue-50 border-2 border-blue-100 text-blue-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <Axe size={24} />
+                <span className="text-2xl leading-none">{(quarter.tackles || []).length}</span>
+                <span className="text-[10px]">Tackle</span>
+              </button>
+              <button
+                onClick={() => handleButtonClick(() => onUpdateQuarter({ saves: quarter.saves + 1 }))}
+                onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'saves'))}
+                onTouchEnd={handlePressEnd}
+                className="h-28 rounded-2xl bg-emerald-50 border-2 border-emerald-100 text-emerald-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <Shield size={24} />
+                <span className="text-2xl leading-none">{quarter.saves}</span>
+                <span className="text-[10px]">Redding</span>
+              </button>
+            </div>
+          )}
+
+          {quickStep === 'select-scorer' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie scoorde?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {activeOnField.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setPendingScorerId(p.id); setQuickStep('select-assist'); }}
+                    className="h-20 px-2 rounded-xl bg-green-50 border border-green-100 text-green-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'select-assist' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie gaf de assist?</h4>
+                <button onClick={() => { setPendingScorerId(null); setQuickStep('menu'); }} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {sortedPresentPlayers.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      if (pendingScorerId !== null) {
+                        onUpdateQuarter({
+                          goals: [...quarter.goals, pendingScorerId],
+                          assists: [...(quarter.assists || []), p.id]
+                        });
+                        lastQuickGoalHadAssistRef.current = true;
+                      }
+                      setPendingScorerId(null);
+                      setQuickStep('menu');
+                    }}
+                    className="h-20 px-2 rounded-xl bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    if (pendingScorerId !== null) {
+                      onUpdateQuarter({ goals: [...quarter.goals, pendingScorerId] });
+                      lastQuickGoalHadAssistRef.current = false;
+                    }
+                    setPendingScorerId(null);
+                    setQuickStep('menu');
+                  }}
+                  className="h-20 px-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                >
+                  Niemand
+                </button>
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'select-tackler' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie deed de tackle?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {activeOnField.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      onUpdateQuarter({ tackles: [...(quarter.tackles || []), p.id] });
+                      setQuickStep('menu');
+                    }}
+                    className="h-20 px-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+        <div className="mt-4 bg-red-50/50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
+          <p className="flex-1 text-xs font-bold text-red-700 uppercase tracking-wider ml-1">Tegendoelpunten</p>
+          <button onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoals: quarter.opponentGoals + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'opponentGoals'))} onTouchEnd={handlePressEnd} className={`flex-[0.8] py-3 rounded-lg font-bold flex items-center justify-center gap-2 text-sm ${quarter.opponentGoals > 0 ? 'bg-red-600 text-white shadow-md' : 'bg-white text-red-600 border border-red-200'}`}><Target size={18} />{quarter.opponentGoals} Goals</button>
+        </div>
+      )}
     </div>
   );
 };

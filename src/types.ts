@@ -27,5 +27,7 @@ export interface Game {
   isAway?: boolean;
   playersPresent: number[];
   parentsPresent: number[];
-  notes?: string; 
+  notes?: string;
+  currentQuarter?: number; // Kwart (1-4) dat momenteel bezig is tijdens een live wedstrijd
+  status?: 'setup' | 'active' | 'finished' | 'cancelled';
 }

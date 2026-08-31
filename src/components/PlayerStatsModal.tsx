@@ -40,7 +40,7 @@ export const PlayerStatsModal: React.FC<Props> = ({ player, games, onClose }) =>
           </div>
           
           <h3 className="text-2xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">U9 Kaulille FC</p>
+          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">U10 Kaulille FC</p>
         </div>
 
         {/* Stats Grid */}

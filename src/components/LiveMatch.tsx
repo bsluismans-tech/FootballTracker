@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, List, LayoutGrid } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Player, Game } from '../types';
@@ -20,9 +20,19 @@ interface Props {
 type Step = 'setup' | 'play' | 'review';
 
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame, onSave, onCancel }) => {
-  const [currentStep, setCurrentStep] = useState<Step>('setup');
-  const [activeQuarterIdx, setActiveQuarterIdx] = useState(0);
+  // Bij het (verder) invullen van een live wedstrijd (vanuit het Dashboard) starten we
+  // meteen in het juiste kwart in plaats van opnieuw bij de opstelling.
+  const [currentStep, setCurrentStep] = useState<Step>(() =>
+    currentGame.status === 'active' ? 'play' : 'setup'
+  );
+  const [activeQuarterIdx, setActiveQuarterIdx] = useState(() => {
+    if (currentGame.status === 'active' && currentGame.currentQuarter) {
+      return Math.min(Math.max(currentGame.currentQuarter - 1, 0), 3);
+    }
+    return 0;
+  });
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [playViewMode, setPlayViewMode] = useState<'list' | 'quick'>('list');
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
@@ -45,6 +55,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             ...currentGame,
             // We houden de status op 'active' zolang we in 'play' of 'review' zitten
             status: 'active',
+            // Zodat het live dashboard weet welk kwart momenteel bezig is
+            currentQuarter: activeQuarterIdx + 1,
             lastUpdate: new Date().toISOString()
           });
         } catch (err) {
@@ -54,7 +66,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     };
 
     syncToFirebase();
-  }, [currentGame, currentStep]);
+  }, [currentGame, currentStep, activeQuarterIdx]);
 
   // --- STATISTIEK BEREKENINGEN ---
   const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goals.length, 0);
@@ -167,7 +179,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
   const presentPlayers = players.filter(p => currentGame.playersPresent.includes(p.id));
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-10 select-none">
+    <div className="max-w-2xl mx-auto p-4 pb-24 select-none">
       
       {/* PROGRESS TRACKER BOVENAAN */}
       <div className="flex justify-between items-center mb-4 px-1">
@@ -214,9 +226,36 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
           handleButtonClick={handleButtonClick} 
           handlePressStart={handlePressStart} 
           handlePressEnd={handlePressEnd}
-          getStatCount={getStatCount} 
+          getStatCount={getStatCount}
           decrementStat={decrementStat}
+          viewMode={playViewMode}
         />
+      )}
+
+      {/* VIEW-SWITCH: Lijst / Tegels (alleen tijdens het invullen van een kwart, geen sticky element) */}
+      {currentStep === 'play' && (
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl shadow-sm mt-4">
+          <button
+            onClick={() => setPlayViewMode('list')}
+            title="Lijst"
+            aria-label="Lijst"
+            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
+              playViewMode === 'list' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+            }`}
+          >
+            <List size={18} />
+          </button>
+          <button
+            onClick={() => setPlayViewMode('quick')}
+            title="Tegels"
+            aria-label="Tegels"
+            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
+              playViewMode === 'quick' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+            }`}
+          >
+            <LayoutGrid size={18} />
+          </button>
+        </div>
       )}
 
       {currentStep === 'review' && (
@@ -232,11 +271,11 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
 {/* STICKY NAVIGATIE ONDERAAN */}
 <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-50">
   <div className="max-w-2xl mx-auto flex gap-3">
-    
+
     {/* TERUG KNOP (Alleen tonen als we niet in setup zitten) */}
     {currentStep !== 'setup' && (
-      <button 
-        onClick={handleBack} 
+      <button
+        onClick={handleBack}
         className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-4 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
         title="Terug"
       >
@@ -247,8 +286,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     )}
 
     {/* START / VOLGENDE / OPSLAAN KNOP */}
-    <button 
-      onClick={handleNext} 
+    <button
+      onClick={handleNext}
       className={`flex-1 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
         ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
     >
@@ -256,7 +295,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       {currentStep === 'play' && (activeQuarterIdx < 3 ? `Start kwart ${activeQuarterIdx + 2}` : 'Einde wedstrijd')}
       {currentStep === 'review' && 'MATCH OPSLAAN'}
     </button>
-    
   </div>
 </div>
 
@@ -273,12 +311,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             <div className="flex justify-end gap-3">
               <button className="px-4 py-2 rounded-lg font-semibold text-gray-500 hover:bg-gray-100 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>
               <button className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={async () => { 
-                // Bij annuleren: verwijder live status of zet op finished
-                if (currentGame.id) {
-                   const gameRef = doc(db, "games", currentGame.id);
-                   await updateDoc(gameRef, { status: 'cancelled' });
-                }
-                onCancel(); 
+                await onCancel();
                 setShowCancelConfirm(false); 
               }}>Ja</button>
             </div>

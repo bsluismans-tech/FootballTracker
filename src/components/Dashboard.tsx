@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2 } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile } from 'lucide-react';
 import { LiveScoreboard } from './LiveScoreboard';
 import type { Player, Game } from '../types';
 
@@ -10,9 +10,12 @@ interface Props {
   games: Game[];
   startNewGame: () => void;
   canStart: boolean;
+  isAdminMode: boolean;
+  onLogoTap: () => void;
+  onEditGame: (game: Game) => void;
 }
 
-export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart }) => {
+export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame }) => {
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
 
@@ -127,7 +130,17 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
       {/* Live Scoreboard / Laatste Resultaat */}
       <section className="animate-in fade-in slide-in-from-top-4 duration-500">
         {liveGame ? (
-          <LiveScoreboard game={liveGame} isLive={true} />
+          <div
+            onClick={() => { if (isAdminMode) onEditGame(liveGame); }}
+            className={isAdminMode ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}
+          >
+            <LiveScoreboard game={liveGame} isLive={true} />
+            {isAdminMode && (
+              <p className="text-center text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2">
+                Tik om de wedstrijd verder te registreren
+              </p>
+            )}
+          </div>
         ) : lastFinishedGame ? (
           <LiveScoreboard game={lastFinishedGame} isLive={false} />
         ) : (
@@ -202,6 +215,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               { label: 'Assists', value: stats.totalAssists, icon: <Handshake size={16} />, color: 'text-yellow-500' },
               { label: 'Tackles', value: stats.totalTackles, icon: <Axe size={16} />, color: 'text-blue-400' },
               { label: 'Saves', value: stats.totalSaves, icon: <Shield size={16} />, color: 'text-emerald-500' },
+              { label: 'Plezier', value: '100%', icon: <Smile size={16} />, color: 'text-pink-500' },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center">
                 <div className="flex items-center gap-1.5 mb-0.5">
@@ -220,15 +234,17 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           </div>
         </div>
         
-        {/* --- NIEUWE WEDSTRIJD KNOP --- */}
-        <button 
-          onClick={startNewGame} 
-          disabled={!canStart} 
-          className="w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-        >
-          <Plus size={22} strokeWidth={3} />
-          <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
-        </button>
+        {/* --- NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) --- */}
+        {isAdminMode && (
+          <button
+            onClick={startNewGame}
+            disabled={!canStart}
+            className="w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+          >
+            <Plus size={22} strokeWidth={3} />
+            <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
+          </button>
+        )}
 
         {/* Topschutter Lijst */}
         {sortedScorers.length > 0 && (
@@ -307,10 +323,18 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
 
       {/* Footer */}
       <div className="mt-12 flex flex-col items-center gap-3">
-        <img src="/clublogo.png" alt="Club Logo" className="max-w-[70px] object-contain opacity-40 grayscale hover:grayscale-0 transition-all duration-500" />
+        <img
+          src="/clublogo.png"
+          alt="Club Logo"
+          onClick={onLogoTap}
+          className={`max-w-[70px] object-contain transition-all duration-500 cursor-pointer ${isAdminMode ? '' : 'opacity-40 grayscale hover:grayscale-0'}`}
+        />
         <div className="flex flex-col items-center">
           <p className="text-[10px] text-[#04174C]/30 font-black uppercase tracking-[0.2em]">U10 Kaulille FC</p>
           <p className="text-[9px] text-[#04174C]/20 font-bold uppercase tracking-widest mt-0.5">Seizoen {new Date().getFullYear()} - {new Date().getFullYear() + 1}</p>
+          {isAdminMode && (
+            <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-1">Admin mode actief</p>
+          )}
         </div>
       </div>
     </div>
