@@ -246,78 +246,83 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           </button>
         )}
 
-        {/* Topschutter Lijst */}
-        {sortedScorers.length > 0 && (
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-            <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-              <Trophy size={18} className="text-yellow-500" /> Topschutter
-            </div>
-            <div className="space-y-3">
-              {sortedScorers.map((scorer, index) => (
-                <div key={scorer.id} className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(scorer.id)}</span>
-                  <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">{scorer.goals} goals</span>
+        {/* Individuele prestaties (Topschutter, De Muur, Hakbijl, Assistenkoning) - alleen zichtbaar in Admin mode */}
+        {isAdminMode && (
+          <>
+            {/* Topschutter Lijst */}
+            {sortedScorers.length > 0 && (
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+                <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                  <Trophy size={18} className="text-yellow-500" /> Topschutter
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Keepers en tackles */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {topKeepers.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Shield size={18} className="text-green-500" /> De Muur
-              </div>
-              <div className="space-y-3">
-                {topKeepers.map((keeper, index) => (
-                  <div key={keeper.id} className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(keeper.id)}</span>
-                    <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded-lg">
-                      {keeper.saves} saves
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {sortedTackles.length > 0 && (
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Axe size={18} className="text-blue-600" /> Hakbijl
-              </div>
-              <div className="space-y-3">
-                {sortedTackles.map((item, index) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
-                    <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
-                      {item.count} tackles
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {sortedAssists.length > 0 && (
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-            <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-              <Handshake size={18} className="text-yellow-600" /> Assistenkoning
-            </div>
-            <div className="space-y-3">
-              {sortedAssists.map((item, index) => (
-                <div key={item.id} className="flex justify-between items-center text-sm">
-                  <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
-                  <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">
-                    {item.count} assists
-                  </span>
+                <div className="space-y-3">
+                  {sortedScorers.map((scorer, index) => (
+                    <div key={scorer.id} className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(scorer.id)}</span>
+                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">{scorer.goals} goals</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* Keepers en tackles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {topKeepers.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+                  <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                    <Shield size={18} className="text-green-500" /> De Muur
+                  </div>
+                  <div className="space-y-3">
+                    {topKeepers.map((keeper, index) => (
+                      <div key={keeper.id} className="flex justify-between items-center text-sm">
+                        <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(keeper.id)}</span>
+                        <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded-lg">
+                          {keeper.saves} saves
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {sortedTackles.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+                  <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                    <Axe size={18} className="text-blue-600" /> Hakbijl
+                  </div>
+                  <div className="space-y-3">
+                    {sortedTackles.map((item, index) => (
+                      <div key={item.id} className="flex justify-between items-center text-sm">
+                        <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
+                        <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
+                          {item.count} tackles
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+
+            {sortedAssists.length > 0 && (
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+                <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                  <Handshake size={18} className="text-yellow-600" /> Assistenkoning
+                </div>
+                <div className="space-y-3">
+                  {sortedAssists.map((item, index) => (
+                    <div key={item.id} className="flex justify-between items-center text-sm">
+                      <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
+                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">
+                        {item.count} assists
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
