@@ -14,10 +14,10 @@ export const PlayerStatsModal: React.FC<Props> = ({ player, games, onClose }) =>
   
   const stats = finishedGames.reduce((acc, game) => {
     game.quarters.forEach(q => {
-      acc.goals += (q.goals || []).filter(id => id === player.id).length;
-      acc.assists += ((q as any).assists || []).filter((id: number) => id === player.id).length;
-      acc.tackles += ((q as any).tackles || []).filter((id: number) => id === player.id).length;
-      if (q.goalkeeper === player.id) {
+      acc.goals += q.goalEvents.filter(e => e.scorerId === player.id).length;
+      acc.assists += q.goalEvents.filter(e => e.assistId === player.id).length;
+      acc.tackles += (q.tackles || []).filter((id: number) => id === player.id).length;
+      if (q.lineup?.keeper === player.id) {
         acc.saves += (q.saves || 0);
       }
     });

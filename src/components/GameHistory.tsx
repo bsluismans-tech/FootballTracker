@@ -58,7 +58,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
           [...finishedGames]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map((g) => {
-              const ourGoals = g.quarters.reduce((s, q) => s + q.goals.length, 0);
+              const ourGoals = g.quarters.reduce((s, q) => s + q.goalEvents.length, 0);
               const opponentGoals = g.quarters.reduce((s, q) => s + q.opponentGoals, 0);
               const isWin = ourGoals > opponentGoals;
               const isDraw = ourGoals === opponentGoals;
@@ -113,19 +113,28 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                               <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-50">
                                 <span className="text-[10px] font-black text-[#04174C] uppercase">Kwart {q.number}</span>
                                 <span className="text-xs font-black text-[#04174C] bg-[#04174C]/5 px-2 py-0.5 rounded">
-                                  {g.isAway ? `${q.opponentGoals}-${q.goals.length}` : `${q.goals.length}-${q.opponentGoals}`}
+                                  {g.isAway ? `${q.opponentGoals}-${q.goalEvents.length}` : `${q.goalEvents.length}-${q.opponentGoals}`}
                                 </span>
                               </div>
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2 text-[11px]">
                                   <Shield size={12} className="text-blue-500" />
-                                  <span className="font-medium text-gray-700">Keeper: {getPlayerName(q.goalkeeper)}</span>
+                                  <span className="font-medium text-gray-700">Keeper: {getPlayerName(q.lineup?.keeper ?? null)}</span>
                                 </div>
                                 <div className="flex items-start gap-2 text-[11px] text-gray-600">
                                   <Goal size={12} className="text-green-500 mt-0.5" />
                                   <div className="flex-1">
                                     <span className="font-medium text-gray-700">Goals: </span>
-                                    <span className="font-bold text-gray-700">{q.goals.length > 0 ? q.goals.map(id => getPlayerName(id)).join(', ') : 'Geen'}</span>
+                                    <span className="font-bold text-gray-700">
+                                      {q.goalEvents.length > 0
+                                        ? q.goalEvents.map((e, i) => (
+                                            <span key={i}>
+                                              {i > 0 && ', '}
+                                              {getPlayerName(e.scorerId)}{e.assistId !== null && <span className="font-normal text-gray-500"> (assist: {getPlayerName(e.assistId)})</span>}
+                                            </span>
+                                          ))
+                                        : 'Geen'}
+                                    </span>
                                   </div>
                                 </div>
                               </div>

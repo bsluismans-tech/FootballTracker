@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, User, Users, X, Gamepad2, Star, Target, Handshake, Axe, Shield } from 'lucide-react';
+import { Plus, Trash2, User, Users, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
 import type { Player, Game } from '../types';
 import { db } from '../firebase';
-import { doc, setDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
 
 interface Props {
   players: Player[];
@@ -13,32 +13,32 @@ interface Props {
 // --- SUBCOMPONENT: PLAYER STATS MODAL ---
 const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () => void }> = ({ player, games, onClose }) => {
   const finishedGames = games.filter(g => g.status === 'finished');
-  
+
   const stats = finishedGames.reduce((acc, game) => {
     game.quarters.forEach(q => {
-      acc.goals += (q.goals || []).filter(id => id === player.id).length;
-      acc.assists += ((q as any).assists || []).filter((id: number) => id === player.id).length;
-      acc.tackles += ((q as any).tackles || []).filter((id: number) => id === player.id).length;
-      if (q.goalkeeper === player.id) acc.saves += (q.saves || 0);
+      acc.goals += q.goalEvents.filter(e => e.scorerId === player.id).length;
+      acc.assists += q.goalEvents.filter(e => e.assistId === player.id).length;
+      acc.tackles += (q.tackles || []).filter((id: number) => id === player.id).length;
+      if (q.lineup?.keeper === player.id) acc.saves += (q.saves || 0);
     });
     if (game.playersPresent.includes(player.id)) acc.matches += 1;
     return acc;
   }, { goals: 0, assists: 0, tackles: 0, saves: 0, matches: 0 });
 
   return (
-    <div 
+    <div
       // Klik op de achtergrond sluit de modal
-      onClick={onClose} 
+      onClick={onClose}
       className="fixed inset-0 bg-[#04174C]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 cursor-pointer"
     >
-      <div 
+      <div
         // StopPropagation voorkomt dat klikken OP de kaart de modal sluit
-        onClick={(e) => e.stopPropagation()} 
+        onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-white cursor-default"
       >
         <div className="bg-gradient-to-br from-[#04174C] to-[#052A6B] p-8 text-center relative">
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors p-2"
           >
             <X size={24} />
@@ -88,13 +88,23 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
+  const [newPlayerIsKeeper, setNewPlayerIsKeeper] = useState(false);
 
   const addPlayer = async () => {
     if (!playerName.trim()) return;
     const newId = Date.now();
     try {
-      await setDoc(doc(db, "players", newId.toString()), { id: newId, name: playerName.trim() });
+      const newPlayer: Player = { id: newId, name: playerName.trim() };
+      if (newPlayerIsKeeper) newPlayer.isKeeper = true;
+      await setDoc(doc(db, "players", newId.toString()), newPlayer);
       setPlayerName('');
+      setNewPlayerIsKeeper(false);
+    } catch (e) { console.error(e); }
+  };
+
+  const toggleKeeper = async (playerId: number, current: boolean | undefined) => {
+    try {
+      await updateDoc(doc(db, "players", playerId.toString()), { isKeeper: !current });
     } catch (e) { console.error(e); }
   };
 
@@ -128,6 +138,13 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
               placeholder="Naam van de speler..."
               className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#04174C]/10 transition-all"
             />
+            <button
+              onClick={() => setNewPlayerIsKeeper(!newPlayerIsKeeper)}
+              title="Keeper"
+              className={`px-3 rounded-xl transition-all flex items-center justify-center ${newPlayerIsKeeper ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-50 text-gray-400'}`}
+            >
+              <Hand size={18} />
+            </button>
             <button onClick={addPlayer} className="bg-[#04174C] text-white px-4 rounded-xl shadow-lg active:scale-95 transition-all">
               <Plus size={20} strokeWidth={3} />
             </button>
@@ -149,15 +166,29 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                   <User size={20} />
                 </div>
                 <span className="font-bold text-[#04174C]">{player.name}</span>
+                {player.isKeeper && !isAdminMode && (
+                  <Hand size={14} className="text-blue-500" />
+                )}
               </div>
-              {isAdminMode && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirm({ id: player.id, name: player.name }); }}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-2"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {isAdminMode && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleKeeper(player.id, player.isKeeper); }}
+                    title="Keeper"
+                    className={`p-2 rounded-lg transition-colors ${player.isKeeper ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-blue-500'}`}
+                  >
+                    <Hand size={18} />
+                  </button>
+                )}
+                {isAdminMode && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirm({ id: player.id, name: player.name }); }}
+                    className="text-gray-300 hover:text-red-500 transition-colors p-2"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -165,7 +196,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
 
       {/* Modals */}
       {selectedPlayer && <PlayerStatsModal player={selectedPlayer} games={games} onClose={() => setSelectedPlayer(null)} />}
-      
+
       {confirm && (
         <div className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setConfirm(null)}>
           <div className="bg-white p-6 rounded-3xl shadow-2xl max-w-xs w-full text-center" onMouseDown={e => e.stopPropagation()}>

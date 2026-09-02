@@ -1,11 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, List, LayoutGrid } from 'lucide-react';
+import { X, List, LayoutGrid, ListChecks } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Player, Game } from '../types';
 
 // Importeer de sub-componenten
 import { MatchSetup } from './MatchSetup';
+import { QuarterLineup } from './QuarterLineup';
 import { MatchPlay } from './MatchPlay';
 import { MatchReview } from './MatchReview';
 
@@ -32,8 +33,15 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     return 0;
   });
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [playViewMode, setPlayViewMode] = useState<'list' | 'quick'>('list');
-  
+  const [playViewMode, setPlayViewMode] = useState<'list' | 'quick'>('quick');
+
+  // Aan het begin van elk kwart moet eerst de basisopstelling bevestigd worden,
+  // voor er doelpunten/tackles/... geregistreerd kunnen worden.
+  const [quarterPhase, setQuarterPhase] = useState<'lineup' | 'actions'>(() =>
+    currentGame.status === 'active' ? 'actions' : 'lineup'
+  );
+  const isFirstQuarterPhaseSync = useRef(true);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPress = useRef(false);
 
@@ -41,6 +49,15 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentStep, activeQuarterIdx]);
+
+  // Telkens als we van kwart wisselen (voor- of achteruit) moet de opstelling opnieuw bevestigd worden.
+  useEffect(() => {
+    if (isFirstQuarterPhaseSync.current) {
+      isFirstQuarterPhaseSync.current = false;
+      return;
+    }
+    setQuarterPhase('lineup');
+  }, [activeQuarterIdx]);
 
   // --- REAL-TIME FIREBASE SYNC ---
   // Telkens als currentGame wijzigt, sturen we de data naar de database.
@@ -69,7 +86,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
   }, [currentGame, currentStep, activeQuarterIdx]);
 
   // --- STATISTIEK BEREKENINGEN ---
-  const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goals.length, 0);
+  const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
   const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
 
   // --- NAVIGATIE LOGICA ---
@@ -83,6 +100,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       setCurrentStep('play');
       setActiveQuarterIdx(0);
     } else if (currentStep === 'play') {
+      // Bij 'lineup' gebeurt de voortgang automatisch zodra de opstelling compleet is
+      // (zie QuarterLineup's onConfirm-call), dus deze knop is dan niet zichtbaar.
       if (activeQuarterIdx < 3) {
         setActiveQuarterIdx(activeQuarterIdx + 1);
       } else {
@@ -216,24 +235,41 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
         />
       )}
 
-      {currentStep === 'play' && (
-        <MatchPlay 
-        currentGame={currentGame}
-          quarter={currentGame.quarters[activeQuarterIdx]} 
-          activeQuarterIdx={activeQuarterIdx}
-          presentPlayers={presentPlayers} 
+      {currentStep === 'play' && quarterPhase === 'lineup' && (
+        <QuarterLineup
+          quarter={currentGame.quarters[activeQuarterIdx]}
+          presentPlayers={presentPlayers}
           onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
-          handleButtonClick={handleButtonClick} 
-          handlePressStart={handlePressStart} 
-          handlePressEnd={handlePressEnd}
-          getStatCount={getStatCount}
-          decrementStat={decrementStat}
-          viewMode={playViewMode}
+          onConfirm={() => setQuarterPhase('actions')}
         />
       )}
 
+      {currentStep === 'play' && quarterPhase === 'actions' && (
+        <>
+          <button
+            onClick={() => setQuarterPhase('lineup')}
+            className="flex items-center gap-1.5 text-[#04174C]/60 font-bold text-[10px] uppercase tracking-widest mb-3"
+          >
+            <ListChecks size={14} /> Opstelling wijzigen
+          </button>
+          <MatchPlay
+            currentGame={currentGame}
+            quarter={currentGame.quarters[activeQuarterIdx]}
+            activeQuarterIdx={activeQuarterIdx}
+            presentPlayers={presentPlayers}
+            onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
+            handleButtonClick={handleButtonClick}
+            handlePressStart={handlePressStart}
+            handlePressEnd={handlePressEnd}
+            getStatCount={getStatCount}
+            decrementStat={decrementStat}
+            viewMode={playViewMode}
+          />
+        </>
+      )}
+
       {/* VIEW-SWITCH: Lijst / Tegels (alleen tijdens het invullen van een kwart, geen sticky element) */}
-      {currentStep === 'play' && (
+      {currentStep === 'play' && quarterPhase === 'actions' && (
         <div className="flex gap-2 bg-gray-100 p-1 rounded-xl shadow-sm mt-4">
           <button
             onClick={() => setPlayViewMode('list')}
@@ -259,11 +295,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       )}
 
       {currentStep === 'review' && (
-        <MatchReview 
-          currentGame={currentGame} 
-          totalGoals={totalGoals} 
-          totalOpponentGoals={totalOpponentGoals} 
-          onUpdateGame={onUpdateGame} 
+        <MatchReview
+          currentGame={currentGame}
+          players={players}
+          totalGoals={totalGoals}
+          totalOpponentGoals={totalOpponentGoals}
+          onUpdateGame={onUpdateGame}
         />
       )}
 
@@ -285,16 +322,18 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       </button>
     )}
 
-    {/* START / VOLGENDE / OPSLAAN KNOP */}
-    <button
-      onClick={handleNext}
-      className={`flex-1 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
-        ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
-    >
-      {currentStep === 'setup' && 'START WEDSTRIJD'}
-      {currentStep === 'play' && (activeQuarterIdx < 3 ? `Start kwart ${activeQuarterIdx + 2}` : 'Einde wedstrijd')}
-      {currentStep === 'review' && 'MATCH OPSLAAN'}
-    </button>
+    {/* START / VOLGENDE / OPSLAAN KNOP (niet zichtbaar tijdens de opstelling-wizard: die gaat automatisch verder) */}
+    {!(currentStep === 'play' && quarterPhase === 'lineup') && (
+      <button
+        onClick={handleNext}
+        className={`flex-1 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
+          ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
+      >
+        {currentStep === 'setup' && 'START WEDSTRIJD'}
+        {currentStep === 'play' && (activeQuarterIdx < 3 ? `Start kwart ${activeQuarterIdx + 2}` : 'Einde wedstrijd')}
+        {currentStep === 'review' && 'MATCH OPSLAAN'}
+      </button>
+    )}
   </div>
 </div>
 

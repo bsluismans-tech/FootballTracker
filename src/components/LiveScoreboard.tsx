@@ -9,7 +9,7 @@ interface Props {
 
 export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
   // Veilige berekening van de scores
-  const ourGoals = game.quarters.reduce((sum, q) => sum + (Array.isArray(q.goals) ? q.goals.length : 0), 0);
+  const ourGoals = game.quarters.reduce((sum, q) => sum + (Array.isArray(q.goalEvents) ? q.goalEvents.length : 0), 0);
   const opponentGoals = game.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
 
   // Bepaal de volgorde op basis van uit/thuis voor de namen en scores

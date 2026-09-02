@@ -9,6 +9,7 @@ import { Settings } from './components/Settings';
 // Importeer Firebase config en Firestore functies
 import { db } from './firebase'; 
 import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { getSeasonId } from './utils/season';
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -82,23 +83,24 @@ export default function App() {
     if (players.length === 0) return;
     
     const newId = Date.now().toString();
+    const now = new Date();
     const game: Game = {
       id: newId,
-      date: new Date().toISOString(),
+      date: now.toISOString(),
+      seasonId: getSeasonId(now),
       // Status 'setup' zorgt dat hij nog NIET op het live-dashboard verschijnt
-      status: 'setup', 
-      quarters: [1, 2, 3, 4].map(n => ({ 
-        number: n, 
-        goals: [], 
-        tackles: [], 
-        assists: [], 
-        saves: 0, 
-        goalkeeper: null, 
+      status: 'setup',
+      quarters: [1, 2, 3, 4].map(n => ({
+        number: n,
+        goalEvents: [],
+        tackles: [],
+        saves: 0,
         opponentGoals: 0,
         substitutes: [],   // Belangrijk voor wissel-logica
-        substitutions: []  // Belangrijk voor pijl-logica
+        substitutions: [], // Belangrijk voor pijl-logica
+        lineup: {}         // Basisopstelling, wordt aan het begin van het kwart ingevuld
       })),
-      playersPresent: players.map(p => p.id), 
+      playersPresent: players.map(p => p.id),
       parentsPresent: [],
       opponent: '',
       isAway: false,
@@ -121,9 +123,15 @@ export default function App() {
   const saveGame = async () => {
     if (currentGame) {
       try {
+        // Eindresultaat vastleggen zodat dit later niet telkens herberekend moet worden
+        // uit de kwarten (handig voor rapportages/AI-analyses over het seizoen).
+        const finalScoreFor = currentGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
+        const finalScoreAgainst = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
+        const result = finalScoreFor > finalScoreAgainst ? 'win' : finalScoreFor < finalScoreAgainst ? 'loss' : 'draw';
+
         // De status wordt in LiveMatch.tsx al op 'finished' gezet bij de laatste stap,
         // maar voor de zekerheid forceren we het hier nogmaals bij het afsluiten.
-        const finalGame = { ...currentGame, status: 'finished' };
+        const finalGame: Game = { ...currentGame, status: 'finished', finalScoreFor, finalScoreAgainst, result };
         await setDoc(doc(db, "games", currentGame.id.toString()), finalGame);
         setCurrentGame(null);
         setEditBackup(null);

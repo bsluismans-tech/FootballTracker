@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile } from 'lucide-react';
 import { LiveScoreboard } from './LiveScoreboard';
 import type { Player, Game } from '../types';
+import { getSeasonId } from '../utils/season';
 
 interface Props {
   players: Player[];
@@ -67,33 +68,34 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
 
   // BEREKENING VAN TEAM STATISTIEKEN
   const stats = finishedGames.reduce((acc, game) => {
-    const ours = game.quarters.reduce((sum, q) => sum + q.goals.length, 0);
+    const ours = game.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
     const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
-    
+
     acc.goalsFor += ours;
     acc.goalsAgainst += theirs;
-    
+
     game.quarters.forEach(q => {
-      acc.totalAssists += ((q as any).assists || []).length;
-      acc.totalTackles += ((q as any).tackles || []).length;
+      acc.totalAssists += q.goalEvents.filter(e => e.assistId !== null).length;
+      acc.totalTackles += (q.tackles || []).length;
       acc.totalSaves += (q.saves || 0);
     });
-    
+
     if (ours > theirs) acc.wins += 1;
     else if (ours < theirs) acc.losses += 1;
     else acc.draws += 1;
-    
+
     return acc;
-  }, { 
-    wins: 0, draws: 0, losses: 0, 
-    goalsFor: 0, goalsAgainst: 0, 
+  }, {
+    wins: 0, draws: 0, losses: 0,
+    goalsFor: 0, goalsAgainst: 0,
     totalAssists: 0, totalTackles: 0, totalSaves: 0
   });
 
   const goalDiff = stats.goalsFor - stats.goalsAgainst;
 
   const getResult = (game: Game) => {
-    const ours = game.quarters.reduce((sum, q) => sum + q.goals.length, 0);
+    if (game.result) return game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D';
+    const ours = game.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
     const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
     if (ours > theirs) return 'W';
     if (ours < theirs) return 'L';
@@ -108,10 +110,15 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
 
   finishedGames.forEach(g => {
     g.quarters.forEach(q => {
-      q.goals.forEach(pId => goalsByPlayer[pId] = (goalsByPlayer[pId] || 0) + 1);
-      ((q as any).assists || []).forEach((pId: number) => assistsByPlayer[pId] = (assistsByPlayer[pId] || 0) + 1);
-      ((q as any).tackles || []).forEach((pId: number) => tacklesByPlayer[pId] = (tacklesByPlayer[pId] || 0) + 1);
-      if (q.goalkeeper) savesByKeeper[q.goalkeeper] = (savesByKeeper[q.goalkeeper] || 0) + q.saves;
+      q.goalEvents.forEach(e => {
+        goalsByPlayer[e.scorerId] = (goalsByPlayer[e.scorerId] || 0) + 1;
+        if (e.assistId !== null) {
+          assistsByPlayer[e.assistId] = (assistsByPlayer[e.assistId] || 0) + 1;
+        }
+      });
+      (q.tackles || []).forEach((pId: number) => tacklesByPlayer[pId] = (tacklesByPlayer[pId] || 0) + 1);
+      const keeperId = q.lineup?.keeper;
+      if (keeperId) savesByKeeper[keeperId] = (savesByKeeper[keeperId] || 0) + q.saves;
     });
   });
 
@@ -336,7 +343,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
         />
         <div className="flex flex-col items-center">
           <p className="text-[10px] text-[#04174C]/30 font-black uppercase tracking-[0.2em]">U10 Kaulille FC</p>
-          <p className="text-[9px] text-[#04174C]/20 font-bold uppercase tracking-widest mt-0.5">Seizoen {new Date().getFullYear()} - {new Date().getFullYear() + 1}</p>
+          <p className="text-[9px] text-[#04174C]/20 font-bold uppercase tracking-widest mt-0.5">Seizoen {getSeasonId()}</p>
           {isAdminMode && (
             <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-1">Admin mode actief</p>
           )}
