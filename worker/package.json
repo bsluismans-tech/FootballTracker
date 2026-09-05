@@ -1,0 +1,14 @@
+{
+  "name": "kaulille-ai-verslag-worker",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.129.0",
+    "@cloudflare/workers-types": "^5.20260905.1",
+    "typescript": "^5.9.3"
+  }
+}

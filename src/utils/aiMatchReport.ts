@@ -1,15 +1,5 @@
 import type { Game, Player } from '../types';
 
-// Gratis Gemini-tier, rechtstreeks vanuit de browser aangeroepen (geen backend nodig).
-// De API-key wordt via een build-time env var meegegeven en zit dus zichtbaar in de
-// publieke bundel. Idealiter wordt de key domein-beperkt (net als de publieke Firebase-key
-// in firebase.ts), maar AI Studio-keys ondersteunen geen "Application restrictions:
-// Websites" — zie .env.example. Beperk de key minstens tot de Generative Language API
-// via "API restrictions" in Google Cloud Console, zodat een gelekte key nergens anders
-// mee kan bellen (het gratis Gemini-quotum misbruiken is dan het enige resterende risico).
-const GEMINI_MODEL = 'gemini-flash-latest';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-
 const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGoals: number): string => {
   const getName = (id: number | null | undefined) =>
     id != null ? players.find(p => p.id === id)?.name || null : null;
@@ -53,43 +43,30 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
     .join('\n');
 };
 
+// Praat met onze eigen Cloudflare Worker (map "worker/" in dit project), die op zijn beurt
+// Cloudflare Workers AI aanroept. Geen API-key in de app nodig — de Worker regelt dat zelf,
+// gratis, zonder externe account. Zie worker/src/index.ts.
+const AI_WORKER_URL = import.meta.env.VITE_AI_WORKER_URL || 'https://kaulille-ai-verslag-poc.footballtrackerpoc.workers.dev';
+
+const REQUEST_TIMEOUT_MS = 20000;
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Sommige netwerken (firewall/VPN/proxy) blokkeren POST-verzoeken naar dit endpoint stil —
-// de browser blijft dan eindeloos wachten op een antwoord dat nooit komt. Zonder timeout zou
-// de "Genereer AI-verslag"-knop in dat geval voor altijd blijven laden. Zie ai-match-report-gemini.md.
-const REQUEST_TIMEOUT_MS = 15000;
-
-// Eén aanroep naar Gemini. Geeft de tekst terug, of gooit een Error met daarin de
-// HTTP-status (zodat de retry-logica hierboven kan beslissen of het de moeite is
-// om het opnieuw te proberen).
-const callGemini = async (
-  apiKey: string,
-  game: Game,
-  players: Player[],
-  ourGoals: number,
-  opponentGoals: number
-): Promise<string> => {
+const callWorker = async (prompt: string): Promise<string> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
-    response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+    response = await fetch(AI_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(game, players, ourGoals, opponentGoals) }] }],
-        // gemini-flash-latest is een "thinking"-model: het verbruikt eerst een deel van het
-        // tokenbudget aan interne redenering vóór het antwoord schrijft. Met een te laag
-        // maxOutputTokens raakt dat budget op vóór er zichtbare tekst is — vandaar ruim genomen.
-        generationConfig: { temperature: 0.9, maxOutputTokens: 2048 },
-      }),
+      body: JSON.stringify({ prompt }),
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
-      throw Object.assign(new Error('Aanroep duurde te lang (netwerk blokkeert mogelijk deze aanroep)'), { timedOut: true });
+      throw Object.assign(new Error('Aanroep duurde te lang'), { timedOut: true });
     }
     throw err;
   } finally {
@@ -98,52 +75,39 @@ const callGemini = async (
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw Object.assign(new Error(`Gemini gaf status ${response.status}: ${errorText}`), { status: response.status });
+    throw Object.assign(new Error(`Worker gaf status ${response.status}: ${errorText}`), { status: response.status });
   }
 
   const data = await response.json();
-  const candidate = data?.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text;
+  const text = data?.text;
   if (typeof text !== 'string' || !text.trim()) {
-    throw new Error(`Gemini gaf geen tekst terug (finishReason: ${candidate?.finishReason})`);
+    throw new Error(`Worker gaf geen tekst terug: ${JSON.stringify(data)}`);
   }
   return text.trim();
 };
 
-// Genereert een wedstrijdverslag via de gratis Gemini-tier. Geeft null terug bij een ontbrekende
-// key of een blijvend mislukte aanroep, zodat de UI dan gewoon terugvalt op de standaard-placeholder.
-// Een 503 (model tijdelijk overbelast) of een timeout wordt een paar keer opnieuw geprobeerd.
-// Een 429 (dagquotum bereikt — gratis tier is 20 verzoeken/dag/model) heeft geen zin om meteen
-// opnieuw te proberen, dus die faalt meteen met een duidelijke log.
+// Genereert een wedstrijdverslag via onze eigen AI-Worker. Geeft null terug bij een
+// blijvend mislukte aanroep, zodat de UI dan gewoon terugvalt op de standaard-placeholder.
 export const generateMatchReport = async (
   game: Game,
   players: Player[],
   ourGoals: number,
   opponentGoals: number
 ): Promise<string | null> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn('VITE_GEMINI_API_KEY ontbreekt: AI-verslag wordt overgeslagen.');
-    return null;
-  }
+  const prompt = buildPrompt(game, players, ourGoals, opponentGoals);
 
-  const maxAttempts = 3;
+  const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      return await callGemini(apiKey, game, players, ourGoals, opponentGoals);
+      return await callWorker(prompt);
     } catch (err) {
       const status = (err as { status?: number }).status;
       const timedOut = (err as { timedOut?: boolean }).timedOut;
+      const isRetryable = timedOut || (typeof status === 'number' && status >= 500);
 
-      if (status === 429) {
-        console.warn('AI-verslag genereren mislukt: gratis dagquotum bereikt (probeer morgen opnieuw).', err);
-        return null;
-      }
-
-      const isRetryable = status === 503 || timedOut;
       if (isRetryable && attempt < maxAttempts) {
-        console.warn(`AI-verslag genereren: poging ${attempt} mislukt (${timedOut ? 'timeout' : `status ${status}`}), nieuwe poging...`);
-        await sleep(attempt * 1000);
+        console.warn(`AI-verslag genereren: poging ${attempt} mislukt, nieuwe poging...`, err);
+        await sleep(1500);
         continue;
       }
       console.warn('AI-verslag genereren mislukt:', err);

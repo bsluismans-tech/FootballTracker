@@ -1,0 +1,10 @@
+{
+  // POC: bewijst dat een Cloudflare Worker via de ingebouwde Workers AI-binding
+  // (geen externe key/account nodig) een AI-verslag kan genereren. Nog niet gekoppeld aan de app.
+  "name": "kaulille-ai-verslag-poc",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "ai": {
+    "binding": "AI"
+  }
+}
