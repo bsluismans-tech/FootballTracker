@@ -6,12 +6,17 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
 
   const goalsByPlayer: Record<string, number> = {};
   const assistsByPlayer: Record<string, number> = {};
+  const tacklesByPlayer: Record<string, number> = {};
   game.quarters.forEach(q => {
     q.goalEvents.forEach(e => {
       const scorer = getName(e.scorerId);
       if (scorer) goalsByPlayer[scorer] = (goalsByPlayer[scorer] || 0) + 1;
       const assist = getName(e.assistId);
       if (assist) assistsByPlayer[assist] = (assistsByPlayer[assist] || 0) + 1;
+    });
+    (q.tackles || []).forEach(id => {
+      const name = getName(id);
+      if (name) tacklesByPlayer[name] = (tacklesByPlayer[name] || 0) + 1;
     });
   });
 
@@ -20,11 +25,24 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
 
   const scorersText = listWithCounts(goalsByPlayer) || 'niemand';
   const assistsText = listWithCounts(assistsByPlayer);
+  const tacklesText = listWithCounts(tacklesByPlayer);
 
   const keeperNames = Array.from(
     new Set(game.quarters.map(q => getName(q.lineup?.keeper)).filter((n): n is string => !!n))
   );
   const totalSaves = game.quarters.reduce((sum, q) => sum + (q.saves || 0), 0);
+
+  // Cumulatieve stand na elk kwart, zodat het model het verloop van de wedstrijd kan schetsen
+  // (bv. een achterstand die later dat kwartaal of nadien werd rechtgezet).
+  let cumulativeOurs = 0;
+  let cumulativeTheirs = 0;
+  const quarterProgression = game.quarters
+    .map((q, i) => {
+      cumulativeOurs += q.goalEvents.length;
+      cumulativeTheirs += q.opponentGoals;
+      return `kwart ${i + 1}: ${cumulativeOurs}-${cumulativeTheirs}`;
+    })
+    .join(', ');
 
   const matchup = game.isAway
     ? `${game.opponent || 'de tegenstander'} - Kaulille`
@@ -32,13 +50,20 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
   const score = game.isAway ? `${opponentGoals}-${ourGoals}` : `${ourGoals}-${opponentGoals}`;
 
   return [
-    'Schrijf een kort, enthousiast wedstrijdverslag (max. 4 zinnen, Nederlands) voor het jeugdvoetbalteam U10 Kaulille.',
+    'Schrijf een kort, enthousiast wedstrijdverslag (max. 4-5 zinnen, Nederlands) voor het jeugdvoetbalteam U10 Kaulille.',
     `Wedstrijd: ${matchup}, eindstand ${score}.`,
+    `Cumulatieve stand (onze goals-tegendoelpunten) na elk kwart: ${quarterProgression}.`,
     `Doelpuntenmakers: ${scorersText}.`,
     assistsText ? `Assists: ${assistsText}.` : '',
-    keeperNames.length ? `Keeper(s): ${keeperNames.join(', ')}, samen ${totalSaves} reddingen.` : '',
+    tacklesText ? `Tackles: ${tacklesText}.` : '',
+    keeperNames.length === 1
+      ? `Keeper (de enige deze wedstrijd): ${keeperNames[0]}, ${totalSaves} reddingen.`
+      : keeperNames.length > 1
+      ? `Keepers (wisselden elkaar af): ${keeperNames.join(', ')}, samen ${totalSaves} reddingen.`
+      : '',
+    'Als het verloop per kwart opmerkelijk is (bijvoorbeeld een achterstand die later in de wedstrijd werd rechtgezet, of net een voorsprong die verdampte), mag je dat kort schetsen — puur op basis van de cumulatieve stand, niet op wie scoorde. Vermeld ook gerust wie goed verdedigde als er tackles zijn.',
     'Schrijf in de wij-vorm, gericht op ouders die het verslag lezen. Gewoon lopende tekst, geen opsomming, geen titel, geen aanhef.',
-    'Belangrijk: gebruik uitsluitend de hierboven vermelde namen, cijfers en feiten. Verzin geen extra spelers, doelpunten, assists, tegenstanders-details of gebeurtenissen die niet expliciet vermeld staan.',
+    'Belangrijk: gebruik uitsluitend de hierboven vermelde namen, cijfers en feiten. Verzin geen extra spelers, doelpunten, assists, tackles, tegenstanders-details of gebeurtenissen die niet expliciet vermeld staan. De cumulatieve stand per kwart en de doelpuntenmakers zijn twee aparte gegevens: het is niet bekend wie in welk specifiek kwart scoorde, dus verbind die twee nooit aan elkaar (zeg dus nooit "in kwart X scoorde speler Y").',
   ]
     .filter(Boolean)
     .join('\n');
