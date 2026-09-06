@@ -9,129 +9,118 @@ interface Props {
   onConfirm: () => void;
 }
 
-type WizardStep = 'keeper' | 'verdediging' | 'middenveld' | 'aanval';
-const STEP_ORDER: WizardStep[] = ['keeper', 'verdediging', 'middenveld', 'aanval'];
-const STEP_LABELS: Record<WizardStep, string> = {
+// Volgorde waarin de focus automatisch verspringt na het toewijzen van een speler.
+const POSITION_ORDER: FieldPosition[] = [
+  'keeper',
+  'verdediger_links',
+  'verdediger_centraal',
+  'verdediger_rechts',
+  'middenvelder',
+  'aanvaller_links',
+  'spits',
+  'aanvaller_rechts',
+];
+
+// Korte labels voor in de compacte vakjes op het veld (rij geeft al context: verdediging/aanval).
+const POSITION_SHORT_LABELS: Record<FieldPosition, string> = {
   keeper: 'Keeper',
-  verdediging: 'Verdediging',
-  middenveld: 'Middenveld',
-  aanval: 'Aanval',
+  verdediger_links: 'Links',
+  verdediger_centraal: 'Centraal',
+  verdediger_rechts: 'Rechts',
+  middenvelder: 'Midden',
+  aanvaller_links: 'Links',
+  spits: 'Spits',
+  aanvaller_rechts: 'Rechts',
 };
 
-const DEFENSE_SLOTS: { pos: FieldPosition; label: string }[] = [
-  { pos: 'verdediger_links', label: 'Links' },
-  { pos: 'verdediger_centraal', label: 'Centraal' },
-  { pos: 'verdediger_rechts', label: 'Rechts' },
-];
-const ATTACK_SLOTS: { pos: FieldPosition; label: string }[] = [
-  { pos: 'aanvaller_links', label: 'Links' },
-  { pos: 'spits', label: 'Spits' },
-  { pos: 'aanvaller_rechts', label: 'Rechts' },
-];
-
-// Welke posities horen bij welke stap (bepaalt wie in de knoppenlijst van die stap mag verschijnen).
-const STEP_POSITIONS: Record<WizardStep, FieldPosition[]> = {
-  keeper: ['keeper'],
-  verdediging: DEFENSE_SLOTS.map(s => s.pos),
-  middenveld: ['middenvelder'],
-  aanval: ATTACK_SLOTS.map(s => s.pos),
+// Volledige labels voor de "Kies voor..."-tekst, waar de korte versie te dubbelzinnig zou zijn.
+const POSITION_FULL_LABELS: Record<FieldPosition, string> = {
+  keeper: 'Keeper',
+  verdediger_links: 'Verdediger links',
+  verdediger_centraal: 'Verdediger centraal',
+  verdediger_rechts: 'Verdediger rechts',
+  middenvelder: 'Middenvelder',
+  aanvaller_links: 'Aanvaller links',
+  spits: 'Spits',
+  aanvaller_rechts: 'Aanvaller rechts',
 };
 
-const isStepComplete = (lineup: Partial<Record<FieldPosition, number>>, step: WizardStep) =>
-  STEP_POSITIONS[step].every(pos => lineup[pos] != null);
+// Visuele opstelling (dubbele ruit): aanval bovenaan (richting tegenstander), keeper onderaan.
+const FORMATION_ROWS: FieldPosition[][] = [
+  ['aanvaller_links', 'spits', 'aanvaller_rechts'],
+  ['middenvelder'],
+  ['verdediger_links', 'verdediger_centraal', 'verdediger_rechts'],
+  ['keeper'],
+];
 
-// Bepaalt bij het (her)openen van dit scherm meteen de juiste stap: de eerste die nog niet volledig is.
-const computeInitialStep = (lineup: Partial<Record<FieldPosition, number>>): WizardStep =>
-  STEP_ORDER.find(step => !isStepComplete(lineup, step)) || 'aanval';
+// Bij het (her)openen focussen we meteen de eerste positie die nog leeg is.
+const computeInitialFocus = (lineup: Partial<Record<FieldPosition, number>>): FieldPosition =>
+  POSITION_ORDER.find(pos => lineup[pos] == null) || 'keeper';
 
 export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpdateQuarter, onConfirm }) => {
-  const [step, setStep] = useState<WizardStep>(() => computeInitialStep(quarter.lineup || {}));
+  const [focusedPosition, setFocusedPosition] = useState<FieldPosition>(() =>
+    computeInitialFocus(quarter.lineup || {})
+  );
 
-  // Alle aanwezige spelers komen in aanmerking voor een positie — wie wisselspeler is,
-  // volgt hierna net uit wie er geen positie toegewezen krijgt (zie finishWizard).
   const sortedPresentPlayers = [...presentPlayers].sort((a, b) => a.name.localeCompare(b.name));
-
   const lineup = quarter.lineup || {};
 
-  // Spelers die in de knoppenlijst van de huidige stap mogen verschijnen: nog niet opgesteld,
-  // óf al opgesteld op een positie die tot deze stap behoort (zodat je een eigen keuze kan herzien).
-  const stepPositions = STEP_POSITIONS[step];
-  const availablePlayers = sortedPresentPlayers.filter(p => {
-    const assignedElsewhere = (Object.entries(lineup) as [FieldPosition, number][])
-      .some(([pos, id]) => id === p.id && !stepPositions.includes(pos));
-    return !assignedElsewhere;
-  });
+  const getPlayerName = (id?: number | null) => (id != null ? presentPlayers.find(p => p.id === id)?.name : undefined);
 
-  // Bij de keeperselectie tonen we spelers die als keeper gemarkeerd staan (Ploeg-instellingen)
-  // vooraan, met een handschoen-icoon (stabiele sort behoudt de alfabetische volgorde per groep).
-  const keeperStepPlayers = step === 'keeper'
-    ? [...availablePlayers].sort((a, b) => Number(!!b.isKeeper) - Number(!!a.isKeeper))
-    : availablePlayers;
+  // Enkel spelers die nog nergens op het veld staan tonen we onderaan — wie al een positie
+  // heeft, verdwijnt uit de lijst (past beter op een telefoonscherm en voorkomt dubbele keuzes).
+  const assignedIds = new Set(Object.values(lineup) as number[]);
+  const unassignedPlayers = sortedPresentPlayers.filter(p => !assignedIds.has(p.id));
 
-  // Wijst een speler toe aan een positie (en haalt hem overal elders weg, voor de zekerheid).
-  const withAssignment = (position: FieldPosition, playerId: number) => {
+  // Bij de keeperselectie tonen we spelers die als keeper gemarkeerd staan (Ploeg-instellingen) vooraan.
+  const playerButtons = focusedPosition === 'keeper'
+    ? [...unassignedPlayers].sort((a, b) => Number(!!b.isKeeper) - Number(!!a.isKeeper))
+    : unassignedPlayers;
+
+  const nextFocus = (current: FieldPosition): FieldPosition => {
+    const idx = POSITION_ORDER.indexOf(current);
+    return POSITION_ORDER[(idx + 1) % POSITION_ORDER.length];
+  };
+
+  // Ronde compleet zodra alle 8 posities een speler hebben: wisselspelers automatisch afleiden
+  // en meteen doorschakelen naar het volgende scherm.
+  const finishIfComplete = (newLineup: Partial<Record<FieldPosition, number>>): boolean => {
+    const allFilled = POSITION_ORDER.every(pos => newLineup[pos] != null);
+    if (!allFilled) {
+      onUpdateQuarter({ lineup: newLineup });
+      return false;
+    }
+    const assignedIds = new Set(Object.values(newLineup) as number[]);
+    const substitutes = sortedPresentPlayers.filter(p => !assignedIds.has(p.id)).map(p => p.id);
+    onUpdateQuarter({ lineup: newLineup, substitutes });
+    onConfirm();
+    return true;
+  };
+
+  // Tik op een positie op het veld: leeg -> gewoon focussen; bezet -> leegmaken en focussen,
+  // zodat er meteen een nieuwe speler voor gekozen kan worden.
+  const handleSlotTap = (position: FieldPosition) => {
+    if (lineup[position] != null) {
+      const newLineup = { ...lineup };
+      delete newLineup[position];
+      onUpdateQuarter({ lineup: newLineup });
+    }
+    setFocusedPosition(position);
+  };
+
+  // Tik op een speler onderaan: wijst toe aan de gefocuste positie (haalt hem overal elders
+  // weg) en springt door naar de volgende positie in de vaste volgorde.
+  const handlePlayerTap = (playerId: number) => {
     const newLineup = { ...lineup };
     (Object.keys(newLineup) as FieldPosition[]).forEach(pos => {
       if (newLineup[pos] === playerId) delete newLineup[pos];
     });
-    newLineup[position] = playerId;
-    return newLineup;
-  };
+    newLineup[focusedPosition] = playerId;
 
-  const withCleared = (position: FieldPosition) => {
-    const newLineup = { ...lineup };
-    delete newLineup[position];
-    return newLineup;
-  };
-
-  // Ronde afgerond (na de laatste stap): iedere aanwezige speler zonder positie
-  // wordt automatisch wisselspeler voor dit kwart.
-  const finishWizard = (finalLineup: Partial<Record<FieldPosition, number>>) => {
-    const assignedIds = new Set(Object.values(finalLineup) as number[]);
-    const substitutes = sortedPresentPlayers.filter(p => !assignedIds.has(p.id)).map(p => p.id);
-    onUpdateQuarter({ lineup: finalLineup, substitutes });
-    onConfirm();
-  };
-
-  const goToNextStep = (fromStep: WizardStep, newLineup: Partial<Record<FieldPosition, number>>) => {
-    const idx = STEP_ORDER.indexOf(fromStep);
-    if (idx === STEP_ORDER.length - 1) {
-      finishWizard(newLineup);
-    } else {
-      onUpdateQuarter({ lineup: newLineup });
-      setStep(STEP_ORDER[idx + 1]);
+    if (!finishIfComplete(newLineup)) {
+      setFocusedPosition(nextFocus(focusedPosition));
     }
   };
-
-  // Eén positie te vervullen (Keeper / Middenveld): klik wijst toe en gaat meteen door,
-  // nogmaals klikken op de reeds gekozen speler maakt de keuze ongedaan.
-  const handleSinglePick = (position: FieldPosition, playerId: number) => {
-    if (lineup[position] === playerId) {
-      onUpdateQuarter({ lineup: withCleared(position) });
-      return;
-    }
-    goToNextStep(step, withAssignment(position, playerId));
-  };
-
-  // Drie posities te vervullen (Verdediging / Aanval): klik vult de eerst lege positie
-  // van links naar rechts; klik op een reeds toegewezen speler maakt die positie weer leeg.
-  const handleSlotPick = (slots: { pos: FieldPosition; label: string }[], playerId: number) => {
-    const occupiedSlot = slots.find(s => lineup[s.pos] === playerId);
-    if (occupiedSlot) {
-      onUpdateQuarter({ lineup: withCleared(occupiedSlot.pos) });
-      return;
-    }
-    const emptySlot = slots.find(s => lineup[s.pos] == null);
-    if (!emptySlot) return;
-    const newLineup = withAssignment(emptySlot.pos, playerId);
-    if (slots.every(s => newLineup[s.pos] != null)) {
-      goToNextStep(step, newLineup);
-    } else {
-      onUpdateQuarter({ lineup: newLineup });
-    }
-  };
-
-  const getPlayerName = (id?: number | null) => (id != null ? presentPlayers.find(p => p.id === id)?.name : undefined);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -139,142 +128,64 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
         <h3 className="font-bold mb-1 flex items-center gap-2 text-[#04174C]">
           <ClipboardList size={18} /> Basisopstelling kwart {quarter.number}
         </h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Kies een speler voor: <span className="font-black text-[#04174C]">{POSITION_FULL_LABELS[focusedPosition]}</span>
+        </p>
 
-        {/* STAPPEN-INDICATOR */}
-        <div className="flex gap-1.5 mb-4 mt-2">
-          {STEP_ORDER.map(s => (
-            <div
-              key={s}
-              className={`flex-1 h-1.5 rounded-full ${
-                s === step ? 'bg-[#04174C]' : isStepComplete(lineup, s) ? 'bg-[#04174C]/40' : 'bg-gray-100'
-              }`}
-            />
+        {/* VISUELE OPSTELLING */}
+        <div className="bg-green-50 rounded-2xl border-2 border-green-100 p-4 space-y-6 mb-4">
+          {FORMATION_ROWS.map((row, i) => (
+            <div key={i} className="flex justify-center gap-2">
+              {row.map(pos => {
+                const playerId = lineup[pos];
+                const name = getPlayerName(playerId);
+                const isFocused = focusedPosition === pos;
+                // Vleugelverdedigers iets omhoog, vleugelaanvallers iets omlaag: samen met de
+                // centrale verdediger/spits ontstaat zo de dubbele-ruit-vorm i.p.v. platte rijen.
+                const wingOffset =
+                  pos === 'verdediger_links' || pos === 'verdediger_rechts'
+                    ? '-translate-y-10'
+                    : pos === 'aanvaller_links' || pos === 'aanvaller_rechts'
+                    ? 'translate-y-10'
+                    : '';
+                return (
+                  <button
+                    key={pos}
+                    onClick={() => handleSlotTap(pos)}
+                    className={`flex-1 max-w-[110px] h-16 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
+                      isFocused
+                        ? 'border-[#04174C] bg-[#04174C] shadow-lg scale-105'
+                        : name
+                        ? 'border-[#04174C]/40 bg-white'
+                        : 'border-dashed border-gray-300 bg-white/60'
+                    }`}
+                  >
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${isFocused ? 'text-white/70' : 'text-gray-400'}`}>
+                      {POSITION_SHORT_LABELS[pos]}
+                    </span>
+                    <span className={`text-xs font-bold truncate max-w-full ${isFocused ? 'text-white' : name ? 'text-[#04174C]' : 'text-gray-300'}`}>
+                      {name || '—'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ))}
         </div>
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-sm font-black text-[#04174C] uppercase tracking-wide">{STEP_LABELS[step]}</p>
-          {step !== 'keeper' && (
+
+        {/* SPELERSLIJST (enkel nog niet-toegewezen spelers, compact voor op een telefoonscherm) */}
+        <div className="grid grid-cols-3 gap-1.5">
+          {playerButtons.map(p => (
             <button
-              onClick={() => setStep(STEP_ORDER[STEP_ORDER.indexOf(step) - 1])}
-              className="text-[10px] text-gray-400 font-black uppercase tracking-widest"
+              key={p.id}
+              onClick={() => handlePlayerTap(p.id)}
+              className="h-11 px-1 rounded-lg text-[11px] font-bold text-center flex items-center justify-center gap-1 leading-tight transition active:scale-95 bg-gray-100 text-gray-600 truncate"
             >
-              ‹ Vorige stap
+              {p.isKeeper && focusedPosition === 'keeper' && <Hand size={11} className="text-blue-500 shrink-0" />}
+              <span className="truncate">{p.name}</span>
             </button>
-          )}
+          ))}
         </div>
-
-        {/* STAP: KEEPER (1 positie) — spelers die als keeper gemarkeerd staan komen vooraan */}
-        {step === 'keeper' && (
-          <div className="grid grid-cols-2 gap-2">
-            {keeperStepPlayers.map(p => (
-              <button
-                key={p.id}
-                onClick={() => handleSinglePick('keeper', p.id)}
-                className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center gap-1.5 leading-tight transition active:scale-[0.97] ${lineup.keeper === p.id ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {p.isKeeper && <Hand size={14} className={lineup.keeper === p.id ? 'text-white' : 'text-blue-500'} />}
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* STAP: VERDEDIGING (3 posities, links naar rechts) */}
-        {step === 'verdediging' && (
-          <>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {DEFENSE_SLOTS.map(slot => {
-                const name = getPlayerName(lineup[slot.pos]);
-                return (
-                  <div
-                    key={slot.pos}
-                    className={`h-16 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center px-1 ${
-                      name ? 'border-[#04174C] bg-[#04174C]/5' : 'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    {!name && <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{slot.label}</span>}
-                    {name && (
-                      <>
-                        <span className="text-[8px] font-black text-[#04174C]/40 uppercase tracking-widest">{slot.label}</span>
-                        <span className="text-xs font-bold text-[#04174C] truncate max-w-full">{name}</span>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {availablePlayers.map(p => {
-                const assignedSlot = DEFENSE_SLOTS.find(s => lineup[s.pos] === p.id);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSlotPick(DEFENSE_SLOTS, p.id)}
-                    className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center leading-tight transition active:scale-[0.97] ${assignedSlot ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
-                  >
-                    {p.name}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* STAP: MIDDENVELD (1 positie) */}
-        {step === 'middenveld' && (
-          <div className="grid grid-cols-2 gap-2">
-            {availablePlayers.map(p => (
-              <button
-                key={p.id}
-                onClick={() => handleSinglePick('middenvelder', p.id)}
-                className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center leading-tight transition active:scale-[0.97] ${lineup.middenvelder === p.id ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* STAP: AANVAL (3 posities, links naar rechts) */}
-        {step === 'aanval' && (
-          <>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {ATTACK_SLOTS.map(slot => {
-                const name = getPlayerName(lineup[slot.pos]);
-                return (
-                  <div
-                    key={slot.pos}
-                    className={`h-16 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center px-1 ${
-                      name ? 'border-[#04174C] bg-[#04174C]/5' : 'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    {!name && <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{slot.label}</span>}
-                    {name && (
-                      <>
-                        <span className="text-[8px] font-black text-[#04174C]/40 uppercase tracking-widest">{slot.label}</span>
-                        <span className="text-xs font-bold text-[#04174C] truncate max-w-full">{name}</span>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {availablePlayers.map(p => {
-                const assignedSlot = ATTACK_SLOTS.find(s => lineup[s.pos] === p.id);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSlotPick(ATTACK_SLOTS, p.id)}
-                    className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center leading-tight transition active:scale-[0.97] ${assignedSlot ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
-                  >
-                    {p.name}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
