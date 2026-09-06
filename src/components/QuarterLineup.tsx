@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClipboardList, Hand } from 'lucide-react';
+import { Hand } from 'lucide-react';
 import type { Player, Quarter, FieldPosition } from '../types';
 
 interface Props {
@@ -31,18 +31,6 @@ const POSITION_SHORT_LABELS: Record<FieldPosition, string> = {
   aanvaller_links: 'Links',
   spits: 'Spits',
   aanvaller_rechts: 'Rechts',
-};
-
-// Volledige labels voor de "Kies voor..."-tekst, waar de korte versie te dubbelzinnig zou zijn.
-const POSITION_FULL_LABELS: Record<FieldPosition, string> = {
-  keeper: 'Keeper',
-  verdediger_links: 'Verdediger links',
-  verdediger_centraal: 'Verdediger centraal',
-  verdediger_rechts: 'Verdediger rechts',
-  middenvelder: 'Middenvelder',
-  aanvaller_links: 'Aanvaller links',
-  spits: 'Spits',
-  aanvaller_rechts: 'Aanvaller rechts',
 };
 
 // Visuele opstelling (dubbele ruit): aanval bovenaan (richting tegenstander), keeper onderaan.
@@ -125,13 +113,6 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
-        <h3 className="font-bold mb-1 flex items-center gap-2 text-[#04174C]">
-          <ClipboardList size={18} /> Basisopstelling kwart {quarter.number}
-        </h3>
-        <p className="text-xs text-gray-400 mb-4">
-          Kies een speler voor: <span className="font-black text-[#04174C]">{POSITION_FULL_LABELS[focusedPosition]}</span>
-        </p>
-
         {/* VISUELE OPSTELLING */}
         <div className="bg-green-50 rounded-2xl border-2 border-green-100 p-4 space-y-6 mb-4">
           {FORMATION_ROWS.map((row, i) => (
@@ -152,7 +133,7 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
                   <button
                     key={pos}
                     onClick={() => handleSlotTap(pos)}
-                    className={`flex-1 max-w-[110px] h-16 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
+                    className={`flex-1 max-w-[110px] h-11 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
                       isFocused
                         ? 'border-[#04174C] bg-[#04174C] shadow-lg scale-105'
                         : name
