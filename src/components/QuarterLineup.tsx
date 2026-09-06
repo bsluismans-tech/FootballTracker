@@ -125,15 +125,15 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
                 // centrale verdediger/spits ontstaat zo de dubbele-ruit-vorm i.p.v. platte rijen.
                 const wingOffset =
                   pos === 'verdediger_links' || pos === 'verdediger_rechts'
-                    ? '-translate-y-10'
+                    ? '-translate-y-8'
                     : pos === 'aanvaller_links' || pos === 'aanvaller_rechts'
-                    ? 'translate-y-10'
+                    ? 'translate-y-8'
                     : '';
                 return (
                   <button
                     key={pos}
                     onClick={() => handleSlotTap(pos)}
-                    className={`flex-1 max-w-[110px] h-11 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
+                    className={`w-20 h-11 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
                       isFocused
                         ? 'border-[#04174C] bg-[#04174C] shadow-lg scale-105'
                         : name

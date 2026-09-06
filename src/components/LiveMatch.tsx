@@ -219,9 +219,19 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             );
           })}
         </div>
-        <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm">
-          <X size={18} /> Annuleren
-        </button>
+        <div className="flex items-center gap-4">
+          {currentStep === 'play' && quarterPhase === 'actions' && (
+            <button
+              onClick={() => setQuarterPhase('lineup')}
+              className="flex items-center gap-1.5 text-[#04174C]/60 font-bold text-[10px] uppercase tracking-widest"
+            >
+              <ListChecks size={14} /> Opstelling wijzigen
+            </button>
+          )}
+          <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm">
+            <X size={18} /> Annuleren
+          </button>
+        </div>
       </div>
 
       {/* RENDER DE JUISTE STAP GEBASEERD OP DE STATE */}
@@ -245,27 +255,19 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       )}
 
       {currentStep === 'play' && quarterPhase === 'actions' && (
-        <>
-          <button
-            onClick={() => setQuarterPhase('lineup')}
-            className="flex items-center gap-1.5 text-[#04174C]/60 font-bold text-[10px] uppercase tracking-widest mb-3"
-          >
-            <ListChecks size={14} /> Opstelling wijzigen
-          </button>
-          <MatchPlay
-            currentGame={currentGame}
-            quarter={currentGame.quarters[activeQuarterIdx]}
-            activeQuarterIdx={activeQuarterIdx}
-            presentPlayers={presentPlayers}
-            onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
-            handleButtonClick={handleButtonClick}
-            handlePressStart={handlePressStart}
-            handlePressEnd={handlePressEnd}
-            getStatCount={getStatCount}
-            decrementStat={decrementStat}
-            viewMode={playViewMode}
-          />
-        </>
+        <MatchPlay
+          currentGame={currentGame}
+          quarter={currentGame.quarters[activeQuarterIdx]}
+          activeQuarterIdx={activeQuarterIdx}
+          presentPlayers={presentPlayers}
+          onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
+          handleButtonClick={handleButtonClick}
+          handlePressStart={handlePressStart}
+          handlePressEnd={handlePressEnd}
+          getStatCount={getStatCount}
+          decrementStat={decrementStat}
+          viewMode={playViewMode}
+        />
       )}
 
       {/* VIEW-SWITCH: Lijst / Tegels (alleen tijdens het invullen van een kwart, geen sticky element) */}
