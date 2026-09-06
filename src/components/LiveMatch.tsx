@@ -42,7 +42,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
   );
   const isFirstQuarterPhaseSync = useRef(true);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
 
   // Scroll instant naar boven bij navigatie
@@ -58,6 +58,18 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     }
     setQuarterPhase('lineup');
   }, [activeQuarterIdx]);
+
+  // Zodra het kwart écht start (opstelling bevestigd), leggen we het startuur vast — alle
+  // minuten van events in dit kwart worden berekend t.o.v. dit tijdstip (zie MatchPlay).
+  useEffect(() => {
+    if (currentStep === 'play' && quarterPhase === 'actions') {
+      const q = currentGame.quarters[activeQuarterIdx];
+      if (q && !q.startedAt) {
+        updateQuarter(activeQuarterIdx, { startedAt: new Date().toISOString() });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, quarterPhase, activeQuarterIdx]);
 
   // --- REAL-TIME FIREBASE SYNC ---
   // Telkens als currentGame wijzigt, sturen we de data naar de database.
@@ -87,7 +99,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
 
   // --- STATISTIEK BEREKENINGEN ---
   const totalGoals = currentGame.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
-  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
+  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + q.opponentGoalEvents.length, 0);
 
   // --- NAVIGATIE LOGICA ---
   const handleNext = async () => {
@@ -174,27 +186,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     onUpdateGame({ ...currentGame, quarters: newQuarters });
   };
 
-  const decrementStat = (idx: number, field: string, playerId?: number) => {
-    const newQuarters = [...currentGame.quarters];
-    const quarter = newQuarters[idx] as any;
-    if (playerId !== undefined) {
-      const array = [...(quarter[field] || [])];
-      const lastIndex = array.lastIndexOf(playerId);
-      if (lastIndex !== -1) {
-        array.splice(lastIndex, 1);
-        updateQuarter(idx, { [field]: array });
-      }
-    } else {
-      const currentVal = quarter[field] || 0;
-      if (currentVal > 0) updateQuarter(idx, { [field]: currentVal - 1 });
-    }
-  };
-
-  const getStatCount = (playerId: number, statArray: number[] | undefined) => {
-    if (!statArray) return 0;
-    return statArray.filter(id => id === playerId).length;
-  };
-
   const presentPlayers = players.filter(p => currentGame.playersPresent.includes(p.id));
 
   return (
@@ -264,8 +255,6 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
           handleButtonClick={handleButtonClick}
           handlePressStart={handlePressStart}
           handlePressEnd={handlePressEnd}
-          getStatCount={getStatCount}
-          decrementStat={decrementStat}
           viewMode={playViewMode}
         />
       )}

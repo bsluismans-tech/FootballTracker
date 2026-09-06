@@ -14,9 +14,10 @@ interface Props {
   isAdminMode: boolean;
   onLogoTap: () => void;
   onEditGame: (game: Game) => void;
+  onViewGame: (game: Game) => void;
 }
 
-export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame }) => {
+export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame, onViewGame }) => {
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
 
@@ -30,7 +31,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
     );
     const unsubscribeLive = onSnapshot(qLive, (snapshot) => {
       if (!snapshot.empty) {
-        setLiveGame({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Game);
+        setLiveGame({ ...snapshot.docs[0].data() } as Game);
       } else {
         setLiveGame(null);
       }
@@ -45,7 +46,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
     );
     const unsubscribeLast = onSnapshot(qLast, (snapshot) => {
       if (!snapshot.empty) {
-        setLastFinishedGame({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Game);
+        setLastFinishedGame({ ...snapshot.docs[0].data() } as Game);
       } else {
         setLastFinishedGame(null);
       }
@@ -69,15 +70,15 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   // BEREKENING VAN TEAM STATISTIEKEN
   const stats = finishedGames.reduce((acc, game) => {
     const ours = game.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
-    const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
+    const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoalEvents.length, 0);
 
     acc.goalsFor += ours;
     acc.goalsAgainst += theirs;
 
     game.quarters.forEach(q => {
       acc.totalAssists += q.goalEvents.filter(e => e.assistId !== null).length;
-      acc.totalTackles += (q.tackles || []).length;
-      acc.totalSaves += (q.saves || 0);
+      acc.totalTackles += (q.tackleEvents || []).length;
+      acc.totalSaves += (q.saveEvents || []).length;
     });
 
     if (ours > theirs) acc.wins += 1;
@@ -96,7 +97,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   const getResult = (game: Game) => {
     if (game.result) return game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D';
     const ours = game.quarters.reduce((sum, q) => sum + q.goalEvents.length, 0);
-    const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoals, 0);
+    const theirs = game.quarters.reduce((sum, q) => sum + q.opponentGoalEvents.length, 0);
     if (ours > theirs) return 'W';
     if (ours < theirs) return 'L';
     return 'D';
@@ -116,9 +117,8 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           assistsByPlayer[e.assistId] = (assistsByPlayer[e.assistId] || 0) + 1;
         }
       });
-      (q.tackles || []).forEach((pId: number) => tacklesByPlayer[pId] = (tacklesByPlayer[pId] || 0) + 1);
-      const keeperId = q.lineup?.keeper;
-      if (keeperId) savesByKeeper[keeperId] = (savesByKeeper[keeperId] || 0) + q.saves;
+      (q.tackleEvents || []).forEach(e => tacklesByPlayer[e.playerId] = (tacklesByPlayer[e.playerId] || 0) + 1);
+      (q.saveEvents || []).forEach(e => savesByKeeper[e.playerId] = (savesByKeeper[e.playerId] || 0) + 1);
     });
   });
 
@@ -149,7 +149,12 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             )}
           </div>
         ) : lastFinishedGame ? (
-          <LiveScoreboard game={lastFinishedGame} isLive={false} />
+          <div
+            onClick={() => onViewGame(lastFinishedGame)}
+            className="cursor-pointer active:scale-[0.99] transition-transform"
+          >
+            <LiveScoreboard game={lastFinishedGame} isLive={false} />
+          </div>
         ) : (
           <div className="bg-white border-2 border-dashed border-gray-100 rounded-2xl p-8 text-center">
             <Trophy className="mx-auto text-gray-200 mb-2" size={32} />

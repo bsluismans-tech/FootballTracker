@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Gamepad2, Edit3 } from 'lucide-react';
 import type { Game, Player } from '../types';
 
@@ -10,11 +10,21 @@ interface Props {
   startNewGame: () => void;
   canStart: boolean;
   isAdminMode: boolean;
+  // Als er vanuit het Dashboard op een wedstrijd getikt is, moet die hier meteen opengeklapt staan.
+  initialExpandedGameId?: number | null;
+  onExpandConsumed?: () => void;
 }
 
-export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onEditGame, startNewGame, canStart, isAdminMode }) => {
-  const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
-  
+export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onEditGame, startNewGame, canStart, isAdminMode, initialExpandedGameId, onExpandConsumed }) => {
+  const [expandedGameId, setExpandedGameId] = useState<number | null>(initialExpandedGameId ?? null);
+
+  // Eenmalig "verbruiken" van de doorgegeven wedstrijd-id, zodat een latere, gewone navigatie
+  // naar deze pagina (via de onderste balk) niet per ongeluk dezelfde wedstrijd blijft openklappen.
+  useEffect(() => {
+    if (initialExpandedGameId != null) onExpandConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; opponent: string; date: string } | null>(null);
 
   // --- FILTERING ---
@@ -59,7 +69,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map((g) => {
               const ourGoals = g.quarters.reduce((s, q) => s + q.goalEvents.length, 0);
-              const opponentGoals = g.quarters.reduce((s, q) => s + q.opponentGoals, 0);
+              const opponentGoals = g.quarters.reduce((s, q) => s + q.opponentGoalEvents.length, 0);
               const isWin = ourGoals > opponentGoals;
               const isDraw = ourGoals === opponentGoals;
               const isLoss = ourGoals < opponentGoals;
@@ -113,7 +123,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                               <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-50">
                                 <span className="text-[10px] font-black text-[#04174C] uppercase">Kwart {q.number}</span>
                                 <span className="text-xs font-black text-[#04174C] bg-[#04174C]/5 px-2 py-0.5 rounded">
-                                  {g.isAway ? `${q.opponentGoals}-${q.goalEvents.length}` : `${q.goalEvents.length}-${q.opponentGoals}`}
+                                  {g.isAway ? `${q.opponentGoalEvents.length}-${q.goalEvents.length}` : `${q.goalEvents.length}-${q.opponentGoalEvents.length}`}
                                 </span>
                               </div>
                               <div className="space-y-2">

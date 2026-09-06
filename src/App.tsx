@@ -19,6 +19,13 @@ export default function App() {
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [editBackup, setEditBackup] = useState<Game | null>(null);
   const [editReturnView, setEditReturnView] = useState<'dashboard' | 'history'>('dashboard');
+  // Welke wedstrijd er opengeklapt moet staan bij het navigeren naar Wedstrijden vanuit het Dashboard.
+  const [expandGameId, setExpandGameId] = useState<number | null>(null);
+
+  const viewGameInHistory = (game: Game) => {
+    setExpandGameId(game.id as number);
+    setView('history');
+  };
 
   // ADMIN MODE: standaard uit, activeren/deactiveren door 3x op het clublogo te tikken
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -82,7 +89,7 @@ export default function App() {
   const startNewGame = async () => {
     if (players.length === 0) return;
     
-    const newId = Date.now().toString();
+    const newId = Date.now();
     const now = new Date();
     const game: Game = {
       id: newId,
@@ -93,9 +100,9 @@ export default function App() {
       quarters: [1, 2, 3, 4].map(n => ({
         number: n,
         goalEvents: [],
-        tackles: [],
-        saves: 0,
-        opponentGoals: 0,
+        tackleEvents: [],
+        saveEvents: [],
+        opponentGoalEvents: [],
         substitutes: [],   // Belangrijk voor wissel-logica
         substitutions: [], // Belangrijk voor pijl-logica
         lineup: {}         // Basisopstelling, wordt aan het begin van het kwart ingevuld
@@ -126,7 +133,7 @@ export default function App() {
         // Eindresultaat vastleggen zodat dit later niet telkens herberekend moet worden
         // uit de kwarten (handig voor rapportages/AI-analyses over het seizoen).
         const finalScoreFor = currentGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
-        const finalScoreAgainst = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
+        const finalScoreAgainst = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
         const result = finalScoreFor > finalScoreAgainst ? 'win' : finalScoreFor < finalScoreAgainst ? 'loss' : 'draw';
 
         // De status wordt in LiveMatch.tsx al op 'finished' gezet bij de laatste stap,
@@ -154,6 +161,7 @@ export default function App() {
           isAdminMode={isAdminMode}
           onLogoTap={handleLogoTap}
           onEditGame={(game) => editGame(game, 'dashboard')}
+          onViewGame={viewGameInHistory}
         />
       )}
 
@@ -174,9 +182,11 @@ export default function App() {
           startNewGame={startNewGame}
           canStart={players.length > 0}
           isAdminMode={isAdminMode}
+          initialExpandedGameId={expandGameId}
+          onExpandConsumed={() => setExpandGameId(null)}
         />
       )}
-      
+
       {view === 'game' && currentGame && (
         <LiveMatch 
           currentGame={currentGame} 

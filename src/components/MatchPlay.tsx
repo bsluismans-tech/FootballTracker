@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Target, Handshake, Axe, RefreshCw, ArrowUpCircle, ArrowDownCircle, Check, X as CloseIcon, Goal } from 'lucide-react';
+import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock } from 'lucide-react';
 import type { Player, Quarter, Game, FieldPosition } from '../types';
 
 interface Props {
@@ -11,8 +11,6 @@ interface Props {
   handleButtonClick: (action: () => void) => void;
   handlePressStart: (action: () => void) => void;
   handlePressEnd: () => void;
-  getStatCount: (playerId: number, statArray: number[] | undefined) => number;
-  decrementStat: (idx: number, field: string, playerId?: number) => void;
   viewMode: 'list' | 'quick';
 }
 
@@ -20,20 +18,31 @@ type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler' |
 
 export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
-  handleButtonClick, handlePressStart, handlePressEnd, getStatCount, decrementStat, viewMode
+  handleButtonClick, handlePressStart, handlePressEnd, viewMode
 }) => {
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
   const [quickStep, setQuickStep] = useState<QuickStep>('menu');
   const [pendingScorerId, setPendingScorerId] = useState<number | null>(null);
-  // In lijstweergave: welke speler er net gescoord heeft, terwijl we vragen wie de assist gaf.
-  const [assistPickerFor, setAssistPickerFor] = useState<number | null>(null);
 
   // Reset de "Snel invoeren"-flow bij het wisselen van kwart of weergave
   useEffect(() => {
     setQuickStep('menu');
     setPendingScorerId(null);
-    setAssistPickerFor(null);
   }, [activeQuarterIdx, viewMode]);
+
+  // Live minuutklok: elke seconde een re-render forceren zodat de verstreken tijd zichtbaar
+  // blijft meetellen, en elk event dat toegevoegd wordt de juiste minuut krijgt.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => forceTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getCurrentMinute = (): number => {
+    if (!quarter.startedAt) return 1;
+    const elapsedMs = Date.now() - new Date(quarter.startedAt).getTime();
+    return Math.max(1, Math.floor(elapsedMs / 60000) + 1);
+  };
 
   const substitutes = quarter.substitutes || [];
   const substitutions = quarter.substitutions || [];
@@ -41,12 +50,14 @@ export const MatchPlay: React.FC<Props> = ({
   const sortedPresentPlayers = [...presentPlayers].sort((a, b) => a.name.localeCompare(b.name));
   const activeOnField = sortedPresentPlayers.filter(p => !substitutes.includes(p.id));
 
+  const getName = (id?: number | null) => (id != null ? presentPlayers.find(p => p.id === id)?.name || 'Onbekend' : 'Onbekend');
+
   // Voert een wissel door: de invaller neemt de positie over van de speler die het veld verlaat,
   // zodat de opstelling na een wissel meteen weer klopt.
   const substitutePlayer = (outId: number, inId: number) => {
     const newSubs = substitutes.filter((id: number) => id !== inId);
     newSubs.push(outId);
-    const newSubstitutions = [...substitutions, { outId, inId }];
+    const newSubstitutions = [...substitutions, { outId, inId, minute: getCurrentMinute() }];
 
     const lineup = quarter.lineup || {};
     const vacatedPosition = (Object.keys(lineup) as FieldPosition[]).find(pos => lineup[pos] === outId);
@@ -59,40 +70,37 @@ export const MatchPlay: React.FC<Props> = ({
     });
   };
 
-  // Aantal goals/assists van een speler dit kwart, afgeleid uit de goalEvents
-  // (die scorer én assist expliciet aan elkaar koppelen, zodat duo-analyses later betrouwbaar zijn).
-  const getGoalCount = (playerId: number) => quarter.goalEvents.filter(e => e.scorerId === playerId).length;
-  const getAssistCount = (playerId: number) => quarter.goalEvents.filter(e => e.assistId === playerId).length;
-
-  // Voegt een nieuw doelpunt toe, met een snapshot van wie er op dat moment op het veld stond.
+  // Voegt een nieuw doelpunt toe, met een snapshot van wie er op dat moment op het veld stond
+  // en de minuut waarop het gebeurde.
   const addGoal = (scorerId: number, assistId: number | null) => {
     onUpdateQuarter({
-      goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id) }]
+      goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id), minute: getCurrentMinute() }]
     });
   };
 
-  // Maakt het laatst toegevoegde doelpunt van een specifieke speler ongedaan (lijstweergave, long-press)
-  const undoLastGoalByPlayer = (playerId: number) => {
-    const lastIdx = [...quarter.goalEvents].map(e => e.scorerId).lastIndexOf(playerId);
-    if (lastIdx === -1) return;
-    onUpdateQuarter({ goalEvents: quarter.goalEvents.filter((_, i) => i !== lastIdx) });
-  };
-
-  // Maakt het laatst toegevoegde doelpunt ongedaan (snel invoeren, long-press op de Doelpunt-tegel)
   const undoLastQuickGoal = () => {
     if (quarter.goalEvents.length === 0) return;
     onUpdateQuarter({ goalEvents: quarter.goalEvents.slice(0, -1) });
   };
 
-  // Maakt de laatst toegevoegde tackle ongedaan
   const undoLastQuickTackle = () => {
-    if ((quarter.tackles || []).length === 0) return;
-    onUpdateQuarter({ tackles: quarter.tackles.slice(0, -1) });
+    if ((quarter.tackleEvents || []).length === 0) return;
+    onUpdateQuarter({ tackleEvents: quarter.tackleEvents.slice(0, -1) });
+  };
+
+  const undoLastQuickSave = () => {
+    if ((quarter.saveEvents || []).length === 0) return;
+    onUpdateQuarter({ saveEvents: quarter.saveEvents.slice(0, -1) });
+  };
+
+  const undoLastQuickOpponentGoal = () => {
+    if ((quarter.opponentGoalEvents || []).length === 0) return;
+    onUpdateQuarter({ opponentGoalEvents: quarter.opponentGoalEvents.slice(0, -1) });
   };
 
   // Bereken totale score over alle kwarten
   const totalOurGoals = currentGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
-  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoals || 0), 0);
+  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
 
   // Dynamische indeling op basis van Thuis/Uit
   const leftName = currentGame.isAway ? (currentGame.opponent || 'Tegenstander') : 'Kaulille';
@@ -100,17 +108,48 @@ export const MatchPlay: React.FC<Props> = ({
   const rightName = currentGame.isAway ? 'Kaulille' : (currentGame.opponent || 'Tegenstander');
   const rightScore = currentGame.isAway ? totalOurGoals : totalOpponentGoals;
 
-  const allFieldView = sortedPresentPlayers.filter(p => {
-    const isSub = substitutes.includes(p.id);
-    const wasSwappedOut = substitutions.some((s) => s.outId === p.id);
-    return !isSub || wasSwappedOut;
-  });
+  // Chronologische lijst van alle events dit kwart (voor de lijstweergave, enkel ter info).
+  type TimelineEntry = { minute: number; icon: React.ReactNode; text: React.ReactNode; key: string };
+  const timeline: TimelineEntry[] = [
+    ...quarter.goalEvents.map((e, i): TimelineEntry => ({
+      minute: e.minute ?? 0,
+      key: `goal-${i}`,
+      icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
+      text: (
+        <>Goal <b>{getName(e.scorerId)}</b>{e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}</>
+      ),
+    })),
+    ...(quarter.tackleEvents || []).map((e, i): TimelineEntry => ({
+      minute: e.minute ?? 0,
+      key: `tackle-${i}`,
+      icon: <Axe size={14} className="text-blue-600 shrink-0" />,
+      text: <>Tackle <b>{getName(e.playerId)}</b></>,
+    })),
+    ...(quarter.saveEvents || []).map((e, i): TimelineEntry => ({
+      minute: e.minute ?? 0,
+      key: `save-${i}`,
+      icon: <Shield size={14} className="text-emerald-600 shrink-0" />,
+      text: <>Redding <b>{getName(e.playerId)}</b></>,
+    })),
+    ...(quarter.opponentGoalEvents || []).map((e, i): TimelineEntry => ({
+      minute: e.minute ?? 0,
+      key: `opp-${i}`,
+      icon: <Target size={14} className="text-red-600 shrink-0" />,
+      text: 'Tegendoelpunt',
+    })),
+    ...substitutions.map((s, i): TimelineEntry => ({
+      minute: s.minute ?? 0,
+      key: `sub-${i}`,
+      icon: <RefreshCw size={14} className="text-gray-500 shrink-0" />,
+      text: <>Wissel: <b>{getName(s.outId)}</b> uit - <b>{getName(s.inId)}</b> in</>,
+    })),
+  ].sort((a, b) => a.minute - b.minute);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
 
       {/* ALGEMENE SCORE BOVENAAN (THUIS/UIT DYNAMISCH) */}
-      <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8">
+      <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8 relative">
         <div className="text-center flex-1">
           <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
             {leftName}
@@ -123,6 +162,9 @@ export const MatchPlay: React.FC<Props> = ({
             {rightName}
           </p>
           <p className="text-3xl font-black tabular-nums">{rightScore}</p>
+        </div>
+        <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-full px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
+          <Clock size={11} /> {getCurrentMinute()}'
         </div>
       </div>
 
@@ -173,85 +215,27 @@ export const MatchPlay: React.FC<Props> = ({
         </div>
       )}
 
-      {/* MODAL / OVERLAY VOOR ASSIST SELECTIE (lijstweergave) */}
-      {assistPickerFor !== null && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setAssistPickerFor(null)}>
-          <div
-            className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 space-y-5 border border-gray-100"
-            onMouseDown={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center">
-              <h4 className="font-black text-[#04174C] text-sm uppercase tracking-wider">Wie gaf de assist?</h4>
-              <button onClick={() => setAssistPickerFor(null)} className="p-2 bg-gray-50 rounded-full text-gray-400">
-                <CloseIcon size={20}/>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {activeOnField.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => { addGoal(assistPickerFor, p.id); setAssistPickerFor(null); }}
-                  className="py-3 px-2 bg-yellow-50 border border-yellow-100 rounded-xl text-xs font-black text-yellow-800 hover:bg-yellow-100 active:scale-95 transition-all"
-                >
-                  {p.name}
-                </button>
+      {/* LIJSTWEERGAVE: chronologisch overzicht van alles wat dit kwart gebeurd is (enkel ter info,
+          invoer gebeurt via Snel invoeren) */}
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          {timeline.length === 0 ? (
+            <p className="text-center text-gray-400 text-xs italic py-8">Nog geen events dit kwart.</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {timeline.map(item => (
+                <div key={item.key} className="flex items-center gap-3 py-2.5 px-3">
+                  <span className="w-7 text-right text-[11px] font-black text-gray-400 tabular-nums shrink-0">{item.minute}'</span>
+                  {item.icon}
+                  <span className="text-xs font-bold text-[#04174C] flex-1">{item.text}</span>
+                </div>
               ))}
             </div>
-
-            <button
-              onClick={() => { addGoal(assistPickerFor, null); setAssistPickerFor(null); }}
-              className="w-full py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest"
-            >
-              Geen assist
-            </button>
-          </div>
+          )}
         </div>
       )}
 
-      {/* REDDINGEN (keeper wordt niet meer hier getoond, maar in de basisopstelling van het kwart) */}
-      {viewMode === 'list' && (
-        <div className="bg-blue-50/50 p-3 rounded-lg border border-[#04174C]/10 flex items-center gap-2">
-          <button onClick={() => handleButtonClick(() => onUpdateQuarter({ saves: quarter.saves + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'saves'))} onTouchEnd={handlePressEnd} className="flex-1 py-3 bg-[#04174C] text-white rounded-lg font-bold flex items-center justify-center gap-2 text-sm"><Shield size={16} />{quarter.saves} Reddingen</button>
-        </div>
-      )}
-
-      {viewMode === 'list' && (
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
-        {allFieldView.map(p => {
-          const gc = getGoalCount(p.id);
-          const ac = getAssistCount(p.id);
-          const tc = getStatCount(p.id, quarter.tackles);
-          const wasSwappedOut = substitutions.some((s) => s.outId === p.id);
-          const wasSwappedIn = substitutions.some((s) => s.inId === p.id);
-
-          return (
-            <div key={p.id} className={`p-2 pl-3 flex items-center gap-3 ${wasSwappedOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-              <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-bold text-[#04174C] text-xs truncate">{p.name}</span>
-                  {wasSwappedOut && <ArrowDownCircle size={12} className="text-red-500 shrink-0" />}
-                  {wasSwappedIn && <ArrowUpCircle size={12} className="text-green-500 shrink-0" />}
-                </div>
-                {!wasSwappedOut && (
-                  <button onClick={() => setWisselTarget(p.id)} className="flex items-center gap-1 text-[8px] font-black text-gray-400 uppercase tracking-tighter mt-0.5">
-                    <RefreshCw size={8}/> Wissel
-                  </button>
-                )}
-              </div>
-
-              <div className="flex gap-1.5 flex-[3.5]">
-                <button onClick={() => handleButtonClick(() => setAssistPickerFor(p.id))} onTouchStart={() => handlePressStart(() => undoLastGoalByPlayer(p.id))} onTouchEnd={handlePressEnd} className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 transition-all active:scale-95 ${gc > 0 ? 'bg-green-600 text-white shadow-sm' : 'bg-green-50 text-green-700 border border-green-100'}`}><Target size={14}/><span className="text-[9px] font-black uppercase">{gc} Goals</span></button>
-                <div className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 ${ac > 0 ? 'bg-yellow-500 text-white shadow-sm' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}><Handshake size={14}/><span className="text-[9px] font-black uppercase">{ac} Assists</span></div>
-                <button onClick={() => handleButtonClick(() => onUpdateQuarter({ tackles: [...(quarter.tackles || []), p.id] }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'tackles', p.id))} onTouchEnd={handlePressEnd} className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-1 transition-all active:scale-95 ${tc > 0 ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}><Axe size={14}/><span className="text-[9px] font-black uppercase">{tc} Tackles</span></button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      )}
-
-      {/* SNEL INVOEREN: 4 grote actieknoppen i.p.v. de spelerslijst */}
+      {/* SNEL INVOEREN: 4 grote actieknoppen (enige manier om events toe te voegen) */}
       {viewMode === 'quick' && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           {quickStep === 'menu' && (
@@ -267,13 +251,13 @@ export const MatchPlay: React.FC<Props> = ({
                 <span className="text-[10px]">Doelpunt</span>
               </button>
               <button
-                onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoals: quarter.opponentGoals + 1 }))}
-                onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'opponentGoals'))}
+                onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoalEvents: [...(quarter.opponentGoalEvents || []), { minute: getCurrentMinute() }] }))}
+                onTouchStart={() => handlePressStart(undoLastQuickOpponentGoal)}
                 onTouchEnd={handlePressEnd}
                 className="h-28 rounded-2xl bg-red-50 border-2 border-red-100 text-red-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
               >
                 <Target size={24} />
-                <span className="text-2xl leading-none">{quarter.opponentGoals}</span>
+                <span className="text-2xl leading-none">{(quarter.opponentGoalEvents || []).length}</span>
                 <span className="text-[10px]">Tegendoelpunt</span>
               </button>
               <button
@@ -283,17 +267,19 @@ export const MatchPlay: React.FC<Props> = ({
                 className="h-28 rounded-2xl bg-blue-50 border-2 border-blue-100 text-blue-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
               >
                 <Axe size={24} />
-                <span className="text-2xl leading-none">{(quarter.tackles || []).length}</span>
+                <span className="text-2xl leading-none">{(quarter.tackleEvents || []).length}</span>
                 <span className="text-[10px]">Tackle</span>
               </button>
               <button
-                onClick={() => handleButtonClick(() => onUpdateQuarter({ saves: quarter.saves + 1 }))}
-                onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'saves'))}
+                onClick={() => handleButtonClick(() => onUpdateQuarter({
+                  saveEvents: [...(quarter.saveEvents || []), { playerId: quarter.lineup?.keeper ?? 0, minute: getCurrentMinute() }]
+                }))}
+                onTouchStart={() => handlePressStart(undoLastQuickSave)}
                 onTouchEnd={handlePressEnd}
                 className="h-28 rounded-2xl bg-emerald-50 border-2 border-emerald-100 text-emerald-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
               >
                 <Shield size={24} />
-                <span className="text-2xl leading-none">{quarter.saves}</span>
+                <span className="text-2xl leading-none">{(quarter.saveEvents || []).length}</span>
                 <span className="text-[10px]">Redding</span>
               </button>
             </div>
@@ -398,7 +384,7 @@ export const MatchPlay: React.FC<Props> = ({
                   <button
                     key={p.id}
                     onClick={() => {
-                      onUpdateQuarter({ tackles: [...(quarter.tackles || []), p.id] });
+                      onUpdateQuarter({ tackleEvents: [...(quarter.tackleEvents || []), { playerId: p.id, minute: getCurrentMinute() }] });
                       setQuickStep('menu');
                     }}
                     className="h-20 px-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
@@ -409,13 +395,6 @@ export const MatchPlay: React.FC<Props> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {viewMode === 'list' && (
-        <div className="mt-4 bg-red-50/50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
-          <p className="flex-1 text-xs font-bold text-red-700 uppercase tracking-wider ml-1">Tegendoelpunten</p>
-          <button onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoals: quarter.opponentGoals + 1 }))} onTouchStart={() => handlePressStart(() => decrementStat(activeQuarterIdx, 'opponentGoals'))} onTouchEnd={handlePressEnd} className={`flex-[0.8] py-3 rounded-lg font-bold flex items-center justify-center gap-2 text-sm ${quarter.opponentGoals > 0 ? 'bg-red-600 text-white shadow-md' : 'bg-white text-red-600 border border-red-200'}`}><Target size={18} />{quarter.opponentGoals} Goals</button>
         </div>
       )}
     </div>

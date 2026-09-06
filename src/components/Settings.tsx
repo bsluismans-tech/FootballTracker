@@ -18,8 +18,8 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
     game.quarters.forEach(q => {
       acc.goals += q.goalEvents.filter(e => e.scorerId === player.id).length;
       acc.assists += q.goalEvents.filter(e => e.assistId === player.id).length;
-      acc.tackles += (q.tackles || []).filter((id: number) => id === player.id).length;
-      if (q.lineup?.keeper === player.id) acc.saves += (q.saves || 0);
+      acc.tackles += (q.tackleEvents || []).filter(e => e.playerId === player.id).length;
+      acc.saves += (q.saveEvents || []).filter(e => e.playerId === player.id).length;
     });
     if (game.playersPresent.includes(player.id)) acc.matches += 1;
     return acc;

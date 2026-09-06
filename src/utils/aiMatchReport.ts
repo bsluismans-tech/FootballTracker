@@ -14,8 +14,8 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
       const assist = getName(e.assistId);
       if (assist) assistsByPlayer[assist] = (assistsByPlayer[assist] || 0) + 1;
     });
-    (q.tackles || []).forEach(id => {
-      const name = getName(id);
+    (q.tackleEvents || []).forEach(e => {
+      const name = getName(e.playerId);
       if (name) tacklesByPlayer[name] = (tacklesByPlayer[name] || 0) + 1;
     });
   });
@@ -30,7 +30,7 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
   const keeperNames = Array.from(
     new Set(game.quarters.map(q => getName(q.lineup?.keeper)).filter((n): n is string => !!n))
   );
-  const totalSaves = game.quarters.reduce((sum, q) => sum + (q.saves || 0), 0);
+  const totalSaves = game.quarters.reduce((sum, q) => sum + (q.saveEvents?.length || 0), 0);
 
   // Cumulatieve stand na elk kwart, zodat het model het verloop van de wedstrijd kan schetsen
   // (bv. een achterstand die later dat kwartaal of nadien werd rechtgezet).
@@ -39,7 +39,7 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
   const quarterProgression = game.quarters
     .map((q, i) => {
       cumulativeOurs += q.goalEvents.length;
-      cumulativeTheirs += q.opponentGoals;
+      cumulativeTheirs += q.opponentGoalEvents.length;
       return `kwart ${i + 1}: ${cumulativeOurs}-${cumulativeTheirs}`;
     })
     .join(', ');
