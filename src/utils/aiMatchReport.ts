@@ -38,6 +38,7 @@ const buildPrompt = (game: Game, players: Player[], ourGoals: number, opponentGo
     assistsText ? `Assists: ${assistsText}.` : '',
     keeperNames.length ? `Keeper(s): ${keeperNames.join(', ')}, samen ${totalSaves} reddingen.` : '',
     'Schrijf in de wij-vorm, gericht op ouders die het verslag lezen. Gewoon lopende tekst, geen opsomming, geen titel, geen aanhef.',
+    'Belangrijk: gebruik uitsluitend de hierboven vermelde namen, cijfers en feiten. Verzin geen extra spelers, doelpunten, assists, tegenstanders-details of gebeurtenissen die niet expliciet vermeld staan.',
   ]
     .filter(Boolean)
     .join('\n');

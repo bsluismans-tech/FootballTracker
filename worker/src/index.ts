@@ -4,7 +4,10 @@ export interface Env {
 
 // Cloudflare Workers AI: geen externe API-key/account nodig, gratis 10.000 "neurons"/dag,
 // draait op Cloudflare's eigen netwerk (via de "ai"-binding in wrangler.jsonc).
-const MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
+// Het kleine/snelle 8B-model verzon te vaak feiten (namen, cijfers) die niet klopten met de
+// wedstrijddata; het grotere 70B-model is nauwkeuriger en kent beter Nederlands. Voor ons lage
+// volume (~1 verslag/week) blijft dit ruim binnen het gratis dagbudget.
+const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 // Enkel de eigen app mag deze Worker aanroepen. Staat de aanvragende Origin er niet bij,
 // dan geven we een niet-matchend Origin-header terug — de browser blokkeert de aanroep dan

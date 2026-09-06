@@ -1,0 +1,23 @@
+name: Deploy AI-Worker naar Cloudflare
+on:
+  push:
+    branches:
+      - main
+    # Enkel deployen als er effectief iets in de worker/-map wijzigt.
+    paths:
+      - "worker/**"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Worker
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install
+        working-directory: worker
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
