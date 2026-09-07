@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, List, LayoutGrid, ListChecks } from 'lucide-react';
+import { X, List, LayoutGrid } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Player, Game, Quarter } from '../types';
@@ -50,6 +50,20 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
+  const touchStartX = useRef<number | null>(null);
+
+  // Horizontaal swipen om te wisselen tussen Event ingave (links) en Event list (rechts).
+  const SWIPE_THRESHOLD = 50;
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (deltaX <= -SWIPE_THRESHOLD) setPlayViewMode('list');   // naar links geswipet -> rechtse view
+    else if (deltaX >= SWIPE_THRESHOLD) setPlayViewMode('quick'); // naar rechts geswipet -> linkse view
+  };
 
   // Scroll instant naar boven bij navigatie
   useEffect(() => {
@@ -201,36 +215,33 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       
       {/* PROGRESS TRACKER BOVENAAN */}
       <div className="flex justify-between items-center mb-4 px-1">
-        <div className="flex gap-2">
+        {/* Enkel het huidige kwart voluit tonen, de rest als klein bolletje — anders past dit
+            samen met "Opstelling wijzigen" en "Annuleren" niet naast elkaar op een telefoonscherm. */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {[0, 1, 2, 3].map((idx) => {
             const isCurrent = currentStep === 'play' && activeQuarterIdx === idx;
             const isPast = (currentStep === 'play' && activeQuarterIdx > idx) || currentStep === 'review';
+            if (isCurrent) {
+              return (
+                <div
+                  key={idx}
+                  className="h-7 px-2.5 rounded-lg flex items-center justify-center text-[10px] font-black bg-white border-2 border-[#04174C] text-[#04174C] shadow-sm whitespace-nowrap"
+                >
+                  Kwart {idx + 1}
+                </div>
+              );
+            }
             return (
               <div
                 key={idx}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-black transition-all duration-300
-                  ${isCurrent ? 'bg-white border-2 border-[#04174C] text-[#04174C] scale-110 shadow-sm' 
-                  : isPast ? 'bg-[#04174C] text-white border-2 border-[#04174C]' 
-                  : 'bg-gray-100 text-gray-300 border-2 border-transparent'}`}
-              >
-                Q{idx + 1}
-              </div>
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${isPast ? 'bg-[#04174C]' : 'bg-gray-200'}`}
+              />
             );
           })}
         </div>
-        <div className="flex items-center gap-4">
-          {currentStep === 'play' && quarterPhase === 'actions' && (
-            <button
-              onClick={() => setQuarterPhase('lineup')}
-              className="flex items-center gap-1.5 text-[#04174C]/60 font-bold text-[10px] uppercase tracking-widest"
-            >
-              <ListChecks size={14} /> Opstelling wijzigen
-            </button>
-          )}
-          <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm">
-            <X size={18} /> Annuleren
-          </button>
-        </div>
+        <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm shrink-0">
+          <X size={18} /> Annuleren
+        </button>
       </div>
 
       {/* RENDER DE JUISTE STAP GEBASEERD OP DE STATE */}
@@ -249,46 +260,48 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
           quarter={currentGame.quarters[activeQuarterIdx]}
           presentPlayers={presentPlayers}
           onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
-          onConfirm={() => setQuarterPhase('actions')}
         />
       )}
 
       {currentStep === 'play' && quarterPhase === 'actions' && (
-        <MatchPlay
-          currentGame={currentGame}
-          quarter={currentGame.quarters[activeQuarterIdx]}
-          activeQuarterIdx={activeQuarterIdx}
-          presentPlayers={presentPlayers}
-          onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
-          handleButtonClick={handleButtonClick}
-          handlePressStart={handlePressStart}
-          handlePressEnd={handlePressEnd}
-          viewMode={playViewMode}
-        />
+        <div onTouchStart={handleSwipeStart} onTouchEnd={handleSwipeEnd}>
+          <MatchPlay
+            currentGame={currentGame}
+            quarter={currentGame.quarters[activeQuarterIdx]}
+            activeQuarterIdx={activeQuarterIdx}
+            presentPlayers={presentPlayers}
+            onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
+            handleButtonClick={handleButtonClick}
+            handlePressStart={handlePressStart}
+            handlePressEnd={handlePressEnd}
+            onEditLineup={() => setQuarterPhase('lineup')}
+            viewMode={playViewMode}
+          />
+        </div>
       )}
 
-      {/* VIEW-SWITCH: Lijst / Tegels (alleen tijdens het invullen van een kwart, geen sticky element) */}
+      {/* VIEW-SWITCH: Event ingave (links) / Event list (rechts) — ook te wisselen door te swipen */}
       {currentStep === 'play' && quarterPhase === 'actions' && (
         <div className="flex gap-2 bg-gray-100 p-1 rounded-xl shadow-sm mt-4">
           <button
-            onClick={() => setPlayViewMode('list')}
-            title="Lijst"
-            aria-label="Lijst"
-            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
-              playViewMode === 'list' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
-            }`}
-          >
-            <List size={18} />
-          </button>
-          <button
             onClick={() => setPlayViewMode('quick')}
-            title="Tegels"
-            aria-label="Tegels"
+            title="Event ingave"
+            aria-label="Event ingave"
             className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
               playViewMode === 'quick' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
             }`}
           >
             <LayoutGrid size={18} />
+          </button>
+          <button
+            onClick={() => setPlayViewMode('list')}
+            title="Event list"
+            aria-label="Event list"
+            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
+              playViewMode === 'list' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+            }`}
+          >
+            <List size={18} />
           </button>
         </div>
       )}
@@ -312,7 +325,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     {currentStep !== 'setup' && (
       <button
         onClick={handleBack}
-        className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-4 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
+        className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-3 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
         title="Terug"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -321,15 +334,28 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       </button>
     )}
 
-    {/* START / VOLGENDE / OPSLAAN KNOP (niet zichtbaar tijdens de opstelling-wizard: die gaat automatisch verder) */}
-    {!(currentStep === 'play' && quarterPhase === 'lineup') && (
+    {/* BEVESTIGEN-KNOP tijdens de opstelling-wizard: pas actief zodra alle 8 posities ingevuld zijn */}
+    {currentStep === 'play' && quarterPhase === 'lineup' ? (
+      <button
+        onClick={() => setQuarterPhase('actions')}
+        disabled={!isLineupComplete(currentGame.quarters[activeQuarterIdx])}
+        className={`flex-1 py-3 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-widest text-sm ${
+          isLineupComplete(currentGame.quarters[activeQuarterIdx])
+            ? 'bg-[#04174C] text-white shadow-xl shadow-blue-200'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+        }`}
+      >
+        Bevestigen
+      </button>
+    ) : (
+      /* START / VOLGENDE / OPSLAAN KNOP */
       <button
         onClick={handleNext}
-        className={`flex-1 text-white py-4 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
+        className={`flex-1 text-white py-3 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
           ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
       >
-        {currentStep === 'setup' && 'START WEDSTRIJD'}
-        {currentStep === 'play' && (activeQuarterIdx < 3 ? `Start kwart ${activeQuarterIdx + 2}` : 'Einde wedstrijd')}
+        {currentStep === 'setup' && 'OPSTELLING INGEVEN'}
+        {currentStep === 'play' && (activeQuarterIdx < 3 ? `Einde kwart ${activeQuarterIdx + 1}` : 'Einde wedstrijd')}
         {currentStep === 'review' && 'MATCH OPSLAAN'}
       </button>
     )}

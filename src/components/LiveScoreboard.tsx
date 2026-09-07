@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Game } from '../types';
+import { formatMinute } from '../utils/matchTime';
 
 interface Props {
   game: Game;
@@ -49,7 +50,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
         {/* Huidig kwart + minuut (alleen tijdens een live wedstrijd) */}
         {isLive && game.currentQuarter && (
           <span className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest bg-white/10 text-white">
-            Kwart {game.currentQuarter}{currentMinute != null ? ` - ${currentMinute}'` : ''}
+            Kwart {game.currentQuarter}{currentMinute != null ? ` - ${formatMinute(currentMinute)}` : ''}
           </span>
         )}
 

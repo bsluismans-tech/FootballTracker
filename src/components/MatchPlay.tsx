@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle } from 'lucide-react';
+import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks } from 'lucide-react';
 import type { Player, Quarter, Game, FieldPosition } from '../types';
+import { formatMinute } from '../utils/matchTime';
 
 interface Props {
   quarter: Quarter;
@@ -11,6 +12,7 @@ interface Props {
   handleButtonClick: (action: () => void) => void;
   handlePressStart: (action: () => void) => void;
   handlePressEnd: () => void;
+  onEditLineup: () => void;
   viewMode: 'list' | 'quick';
 }
 
@@ -19,7 +21,7 @@ type EventType = 'goal' | 'tackle' | 'save' | 'opponentGoal' | 'substitution';
 
 export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
-  handleButtonClick, handlePressStart, handlePressEnd, viewMode
+  handleButtonClick, handlePressStart, handlePressEnd, onEditLineup, viewMode
 }) => {
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
   const [quickStep, setQuickStep] = useState<QuickStep>('menu');
@@ -225,7 +227,7 @@ export const MatchPlay: React.FC<Props> = ({
           <p className="text-3xl font-black tabular-nums">{rightScore}</p>
         </div>
         <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-full px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
-          <Clock size={11} /> {getCurrentMinute()}'
+          <Clock size={11} /> {formatMinute(getCurrentMinute())}
         </div>
       </div>
 
@@ -286,7 +288,7 @@ export const MatchPlay: React.FC<Props> = ({
             <div className="divide-y divide-gray-50">
               {timeline.map(item => (
                 <div key={item.key} className="flex items-center gap-3 py-2.5 px-3">
-                  <span className="w-7 text-right text-[11px] font-black text-gray-400 tabular-nums shrink-0">{item.minute}'</span>
+                  <span className="w-11 text-right text-[11px] font-black text-gray-400 tabular-nums shrink-0">{formatMinute(item.minute)}</span>
                   {item.icon}
                   <span className="text-xs font-bold text-[#04174C] flex-1">{item.text}</span>
                   <button
@@ -384,6 +386,15 @@ export const MatchPlay: React.FC<Props> = ({
               className="w-full mt-3 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
               <RefreshCw size={14} /> Wissel
+            </button>
+          )}
+
+          {quickStep === 'menu' && (
+            <button
+              onClick={onEditLineup}
+              className="w-full mt-2 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <ListChecks size={14} /> Opstelling wijzigen
             </button>
           )}
 

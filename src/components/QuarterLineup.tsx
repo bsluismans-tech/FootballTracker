@@ -6,7 +6,6 @@ interface Props {
   quarter: Quarter;
   presentPlayers: Player[];
   onUpdateQuarter: (updates: Partial<Quarter>) => void;
-  onConfirm: () => void;
 }
 
 // Volgorde waarin de focus automatisch verspringt na het toewijzen van een speler.
@@ -45,7 +44,7 @@ const FORMATION_ROWS: FieldPosition[][] = [
 const computeInitialFocus = (lineup: Partial<Record<FieldPosition, number>>): FieldPosition =>
   POSITION_ORDER.find(pos => lineup[pos] == null) || 'keeper';
 
-export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpdateQuarter, onConfirm }) => {
+export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpdateQuarter }) => {
   const [focusedPosition, setFocusedPosition] = useState<FieldPosition>(() =>
     computeInitialFocus(quarter.lineup || {})
   );
@@ -70,19 +69,18 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
     return POSITION_ORDER[(idx + 1) % POSITION_ORDER.length];
   };
 
-  // Ronde compleet zodra alle 8 posities een speler hebben: wisselspelers automatisch afleiden
-  // en meteen doorschakelen naar het volgende scherm.
-  const finishIfComplete = (newLineup: Partial<Record<FieldPosition, number>>): boolean => {
+  // Zodra alle 8 posities een speler hebben, leiden we meteen de wisselspelers af — maar we
+  // schakelen niet automatisch door naar het volgende scherm: dat gebeurt pas als de gebruiker
+  // expliciet op de sticky "Bevestigen"-knop tikt (zie LiveMatch.tsx).
+  const applyLineupUpdate = (newLineup: Partial<Record<FieldPosition, number>>) => {
     const allFilled = POSITION_ORDER.every(pos => newLineup[pos] != null);
     if (!allFilled) {
       onUpdateQuarter({ lineup: newLineup });
-      return false;
+      return;
     }
     const assignedIds = new Set(Object.values(newLineup) as number[]);
     const substitutes = sortedPresentPlayers.filter(p => !assignedIds.has(p.id)).map(p => p.id);
     onUpdateQuarter({ lineup: newLineup, substitutes });
-    onConfirm();
-    return true;
   };
 
   // Tik op een positie op het veld: leeg -> gewoon focussen; bezet -> leegmaken en focussen,
@@ -105,9 +103,8 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
     });
     newLineup[focusedPosition] = playerId;
 
-    if (!finishIfComplete(newLineup)) {
-      setFocusedPosition(nextFocus(focusedPosition));
-    }
+    applyLineupUpdate(newLineup);
+    setFocusedPosition(nextFocus(focusedPosition));
   };
 
   return (

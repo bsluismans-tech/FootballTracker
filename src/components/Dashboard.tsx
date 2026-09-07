@@ -186,15 +186,27 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               </div>
             </div>
 
-            <div className="flex items-center justify-start overflow-x-auto pb-1">
+            {/* pt-1.5 erbij (naast pb-1): overflow-x-auto laat de Y-as ook clippen, dus zonder
+                wat ruimte bovenaan werd de ring van het meest recente bolletje afgesneden. */}
+            <div className="flex items-center justify-start overflow-x-auto pt-1.5 pb-1">
               {games.length === 0 ? (
                 <span className="text-[10px] text-gray-400 italic font-medium">Geen data</span>
               ) : (
-                lastFiveGames.map((game, i) => (
-                  <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 text-[10px] font-bold ${getResult(game) === 'W' ? 'bg-green-500' : getResult(game) === 'L' ? 'bg-red-500' : 'bg-gray-400'} ${i !== 0 ? 'ml-1.5' : ''}`}>
-                    {getResult(game)}
-                  </div>
-                ))
+                lastFiveGames.map((game, i) => {
+                  const isMostRecent = i === lastFiveGames.length - 1;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 text-[10px] rounded-full flex items-center justify-center text-white shrink-0 font-bold transition-all ${
+                        getResult(game) === 'W' ? 'bg-green-500' : getResult(game) === 'L' ? 'bg-red-500' : 'bg-gray-400'
+                      } ${i !== 0 ? 'ml-1.5' : ''} ${
+                        isMostRecent ? 'ring-2 ring-offset-2 ring-[#04174C]/40 shadow-md' : ''
+                      }`}
+                    >
+                      {getResult(game)}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
