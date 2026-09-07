@@ -103,6 +103,7 @@ export default function App() {
         tackleEvents: [],
         saveEvents: [],
         opponentGoalEvents: [],
+        injuryEvents: [],
         substitutes: [],   // Belangrijk voor wissel-logica
         substitutions: [], // Belangrijk voor pijl-logica
         lineup: {}         // Basisopstelling, wordt aan het begin van het kwart ingevuld

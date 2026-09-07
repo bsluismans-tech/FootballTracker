@@ -25,15 +25,29 @@ export type FieldPosition =
   | 'spits'
   | 'aanvaller_rechts';
 
+// Hoe een doelpunt tot stand kwam — zowel bij onze doelpunten als bij tegendoelpunten
+// bijgehouden, zodat er op het einde van het seizoen statistieken over gemaakt kunnen worden.
+export type GoalType =
+  | 'collectieve_aanval'
+  | 'individuele_actie'
+  | 'hoekschop'
+  | 'vrije_trap'
+  | 'penalty'
+  | 'counter'
+  | 'rebound'
+  | 'kopbal'
+  | 'owngoal';
+
 // Eén doelpunt, met een expliciete koppeling tussen scorer en assist (indien van toepassing).
 // playersOnField legt vast wie er van ons team op het veld stond op het moment van het doelpunt,
 // zodat achteraf betrouwbaar te analyseren is welke spelerscombinaties samen goed scoren.
-// minute is optioneel: bestaande, vóór deze feature ingevoerde doelpunten hebben geen minuut.
+// minute/goalType zijn optioneel: bestaande, vóór deze features ingevoerde doelpunten hebben dit niet.
 export interface GoalEvent {
   scorerId: number;
   assistId: number | null;
   playersOnField: number[];
   minute?: number;
+  goalType?: GoalType;
 }
 
 export interface TackleEvent {
@@ -48,11 +62,19 @@ export interface SaveEvent {
 
 export interface OpponentGoalEvent {
   minute?: number;
+  goalType?: GoalType;
 }
 
 export interface Substitution {
   outId: number;
   inId: number;
+  minute?: number;
+}
+
+// Een speler die geblesseerd raakte. Optioneel veld (niet gemigreerd voor oude wedstrijden,
+// bestond nog niet), dus overal defensief lezen met `|| []`.
+export interface InjuryEvent {
+  playerId: number;
   minute?: number;
 }
 
@@ -62,6 +84,7 @@ export interface Quarter {
   tackleEvents: TackleEvent[];
   saveEvents: SaveEvent[];
   opponentGoalEvents: OpponentGoalEvent[];
+  injuryEvents?: InjuryEvent[];
   substitutes: number[];        // spelers die momenteel op de bank zitten dit kwart
   substitutions: Substitution[]; // wissel-log: wie eruit, wie erin
   // Basisopstelling voor dit kwart: per positie welke speler er staat.

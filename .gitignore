@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Lokale Firestore-back-ups (bevatten spelersnamen van kinderen — niet committen)
+backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

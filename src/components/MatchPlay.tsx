@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks } from 'lucide-react';
-import type { Player, Quarter, Game, FieldPosition } from '../types';
+import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks, Bandage } from 'lucide-react';
+import type { Player, Quarter, Game, FieldPosition, GoalType } from '../types';
 import { formatMinute } from '../utils/matchTime';
+import { GOAL_TYPES, GOAL_TYPE_LABELS } from '../utils/goalTypes';
 
 interface Props {
   quarter: Quarter;
@@ -16,8 +17,8 @@ interface Props {
   viewMode: 'list' | 'quick';
 }
 
-type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler' | 'select-outgoing';
-type EventType = 'goal' | 'tackle' | 'save' | 'opponentGoal' | 'substitution';
+type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-goal-type' | 'select-opponent-goal-type' | 'select-tackler' | 'select-outgoing' | 'select-injured' | 'injury-followup';
+type EventType = 'goal' | 'tackle' | 'save' | 'opponentGoal' | 'substitution' | 'injury';
 
 export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
@@ -26,6 +27,11 @@ export const MatchPlay: React.FC<Props> = ({
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
   const [quickStep, setQuickStep] = useState<QuickStep>('menu');
   const [pendingScorerId, setPendingScorerId] = useState<number | null>(null);
+  // Scorer + assist van het doelpunt dat aan het invoeren is, terwijl we nog vragen hoe het
+  // doelpunt tot stand kwam.
+  const [pendingGoal, setPendingGoal] = useState<{ scorerId: number; assistId: number | null } | null>(null);
+  // Welke speler net als geblesseerd gemeld is, terwijl we vragen of die gewisseld wordt.
+  const [pendingInjuredId, setPendingInjuredId] = useState<number | null>(null);
   // Welk event uit de chronologische lijst de gebruiker wil verwijderen (met bevestiging).
   const [deleteTarget, setDeleteTarget] = useState<{ type: EventType; index: number; label: string } | null>(null);
 
@@ -33,6 +39,8 @@ export const MatchPlay: React.FC<Props> = ({
   useEffect(() => {
     setQuickStep('menu');
     setPendingScorerId(null);
+    setPendingGoal(null);
+    setPendingInjuredId(null);
   }, [activeQuarterIdx, viewMode]);
 
   // Live minuutklok: elke seconde een re-render forceren zodat de verstreken tijd zichtbaar
@@ -75,11 +83,19 @@ export const MatchPlay: React.FC<Props> = ({
     });
   };
 
-  // Voegt een nieuw doelpunt toe, met een snapshot van wie er op dat moment op het veld stond
-  // en de minuut waarop het gebeurde.
-  const addGoal = (scorerId: number, assistId: number | null) => {
+  // Voegt een nieuw doelpunt toe, met een snapshot van wie er op dat moment op het veld stond,
+  // de minuut waarop het gebeurde, en hoe het doelpunt tot stand kwam.
+  const addGoal = (scorerId: number, assistId: number | null, goalType: GoalType) => {
     onUpdateQuarter({
-      goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id), minute: getCurrentMinute() }]
+      goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id), minute: getCurrentMinute(), goalType }]
+    });
+  };
+
+  // Meldt een blessure. Los daarvan wordt (indien nodig) een aparte wissel doorgevoerd via de
+  // bestaande wissel-modal — een blessure zelf verandert dus niets aan opstelling/wisselspelers.
+  const addInjury = (playerId: number) => {
+    onUpdateQuarter({
+      injuryEvents: [...(quarter.injuryEvents || []), { playerId, minute: getCurrentMinute() }]
     });
   };
 
@@ -124,9 +140,13 @@ export const MatchPlay: React.FC<Props> = ({
       index: i,
       icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
       text: (
-        <>Goal <b>{getName(e.scorerId)}</b>{e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}</>
+        <>
+          Goal <b>{getName(e.scorerId)}</b>
+          {e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}
+          {e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}
+        </>
       ),
-      label: `Goal ${getName(e.scorerId)}${e.assistId != null ? ` (Assist: ${getName(e.assistId)})` : ''}`,
+      label: `Goal ${getName(e.scorerId)}${e.assistId != null ? ` (Assist: ${getName(e.assistId)})` : ''}${e.goalType ? ` — ${GOAL_TYPE_LABELS[e.goalType]}` : ''}`,
     })),
     ...(quarter.tackleEvents || []).map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
@@ -152,8 +172,17 @@ export const MatchPlay: React.FC<Props> = ({
       type: 'opponentGoal',
       index: i,
       icon: <Target size={14} className="text-red-600 shrink-0" />,
-      text: 'Tegendoelpunt',
-      label: 'Tegendoelpunt',
+      text: <>Tegendoelpunt{e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}</>,
+      label: `Tegendoelpunt${e.goalType ? ` — ${GOAL_TYPE_LABELS[e.goalType]}` : ''}`,
+    })),
+    ...(quarter.injuryEvents || []).map((e, i): TimelineEntry => ({
+      minute: e.minute ?? 0,
+      key: `injury-${i}`,
+      type: 'injury',
+      index: i,
+      icon: <Bandage size={14} className="text-orange-600 shrink-0" />,
+      text: <>Blessure <b>{getName(e.playerId)}</b></>,
+      label: `Blessure ${getName(e.playerId)}`,
     })),
     ...substitutions.map((s, i): TimelineEntry => ({
       minute: s.minute ?? 0,
@@ -186,6 +215,9 @@ export const MatchPlay: React.FC<Props> = ({
         break;
       case 'opponentGoal':
         onUpdateQuarter({ opponentGoalEvents: quarter.opponentGoalEvents.filter((_, i) => i !== index) });
+        break;
+      case 'injury':
+        onUpdateQuarter({ injuryEvents: (quarter.injuryEvents || []).filter((_, i) => i !== index) });
         break;
       case 'substitution': {
         // Wissel ongedaan maken: invaller terug naar de bank, uitgaande speler terug op het veld,
@@ -345,7 +377,7 @@ export const MatchPlay: React.FC<Props> = ({
                 <span className="text-[10px]">Doelpunt</span>
               </button>
               <button
-                onClick={() => handleButtonClick(() => onUpdateQuarter({ opponentGoalEvents: [...(quarter.opponentGoalEvents || []), { minute: getCurrentMinute() }] }))}
+                onClick={() => handleButtonClick(() => setQuickStep('select-opponent-goal-type'))}
                 onTouchStart={() => handlePressStart(undoLastQuickOpponentGoal)}
                 onTouchEnd={handlePressEnd}
                 className="h-28 rounded-2xl bg-red-50 border-2 border-red-100 text-red-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
@@ -376,17 +408,23 @@ export const MatchPlay: React.FC<Props> = ({
                 <span className="text-2xl leading-none">{(quarter.saveEvents || []).length}</span>
                 <span className="text-[10px]">Redding</span>
               </button>
+              <button
+                onClick={() => setQuickStep('select-injured')}
+                className="h-28 rounded-2xl bg-orange-50 border-2 border-orange-100 text-orange-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <Bandage size={24} />
+                <span className="text-2xl leading-none">{(quarter.injuryEvents || []).length}</span>
+                <span className="text-[10px]">Blessure</span>
+              </button>
+              <button
+                onClick={() => setQuickStep('select-outgoing')}
+                className="h-28 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-600 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+              >
+                <RefreshCw size={24} />
+                <span className="text-2xl leading-none">{substitutions.length}</span>
+                <span className="text-[10px]">Wissel</span>
+              </button>
             </div>
-          )}
-
-          {/* WISSEL-KNOP ONDER DE TEGELS */}
-          {quickStep === 'menu' && (
-            <button
-              onClick={() => setQuickStep('select-outgoing')}
-              className="w-full mt-3 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <RefreshCw size={14} /> Wissel
-            </button>
           )}
 
           {quickStep === 'menu' && (
@@ -450,10 +488,10 @@ export const MatchPlay: React.FC<Props> = ({
                     key={p.id}
                     onClick={() => {
                       if (pendingScorerId !== null) {
-                        addGoal(pendingScorerId, p.id);
+                        setPendingGoal({ scorerId: pendingScorerId, assistId: p.id });
+                        setQuickStep('select-goal-type');
                       }
                       setPendingScorerId(null);
-                      setQuickStep('menu');
                     }}
                     className="h-20 px-2 rounded-xl bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
@@ -463,15 +501,64 @@ export const MatchPlay: React.FC<Props> = ({
                 <button
                   onClick={() => {
                     if (pendingScorerId !== null) {
-                      addGoal(pendingScorerId, null);
+                      setPendingGoal({ scorerId: pendingScorerId, assistId: null });
+                      setQuickStep('select-goal-type');
                     }
                     setPendingScorerId(null);
-                    setQuickStep('menu');
                   }}
                   className="h-20 px-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                 >
                   Niemand
                 </button>
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'select-goal-type' && pendingGoal !== null && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Hoe werd het doelpunt gemaakt?</h4>
+                <button onClick={() => { setPendingGoal(null); setQuickStep('menu'); }} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {GOAL_TYPES.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      addGoal(pendingGoal.scorerId, pendingGoal.assistId, value);
+                      setPendingGoal(null);
+                      setQuickStep('menu');
+                    }}
+                    className="h-16 px-2 rounded-xl bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold text-[11px] flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'select-opponent-goal-type' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Hoe scoorde de tegenstander?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {GOAL_TYPES.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      onUpdateQuarter({
+                        opponentGoalEvents: [...(quarter.opponentGoalEvents || []), { minute: getCurrentMinute(), goalType: value }]
+                      });
+                      setQuickStep('menu');
+                    }}
+                    className="h-16 px-2 rounded-xl bg-red-50 border border-red-100 text-red-800 font-bold text-[11px] flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -495,6 +582,73 @@ export const MatchPlay: React.FC<Props> = ({
                     {p.name}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'select-injured' && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie is geblesseerd?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {activeOnField.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      addInjury(p.id);
+                      setPendingInjuredId(p.id);
+                      setQuickStep('injury-followup');
+                    }}
+                    className="h-20 px-2 rounded-xl bg-orange-50 border border-orange-100 text-orange-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {quickStep === 'injury-followup' && pendingInjuredId !== null && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">
+                  Wordt {getName(pendingInjuredId)} gewisseld?
+                </h4>
+                <button
+                  onClick={() => {
+                    // Annuleren maakt het hele blessure-event ongedaan (niet enkel de wisselvraag) —
+                    // dat werd net toegevoegd als laatste item, dus die verwijderen we weer.
+                    onUpdateQuarter({ injuryEvents: (quarter.injuryEvents || []).slice(0, -1) });
+                    setPendingInjuredId(null);
+                    setQuickStep('menu');
+                  }}
+                  className="text-gray-400 text-[10px] font-black uppercase tracking-widest shrink-0"
+                >
+                  Annuleren
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setWisselTarget(pendingInjuredId);
+                    setPendingInjuredId(null);
+                    setQuickStep('menu');
+                  }}
+                  className="h-16 px-2 rounded-xl bg-red-50 border border-red-100 text-red-800 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+                >
+                  <Triangle size={16} className="rotate-180 fill-red-500 text-red-500" /> Ja, wisselen
+                </button>
+                <button
+                  onClick={() => {
+                    setPendingInjuredId(null);
+                    setQuickStep('menu');
+                  }}
+                  className="h-16 px-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 font-black text-xs uppercase tracking-widest flex items-center justify-center active:scale-95 transition-all"
+                >
+                  Nee, blijft staan
+                </button>
               </div>
             </div>
           )}
