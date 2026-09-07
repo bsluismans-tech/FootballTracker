@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Game } from '../types';
 
 interface Props {
@@ -7,9 +7,23 @@ interface Props {
 }
 
 export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
+  // Live minuutklok: enkel nodig tijdens een lopende wedstrijd, zodat de minuut op het
+  // Dashboard mee blijft tikken bij iedereen die meekijkt (niet enkel bij de invoerder).
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!isLive) return;
+    const interval = setInterval(() => forceTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isLive]);
+
   // Veilige berekening van de scores
   const ourGoals = game.quarters.reduce((sum, q) => sum + (Array.isArray(q.goalEvents) ? q.goalEvents.length : 0), 0);
   const opponentGoals = game.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
+
+  const activeQuarter = game.currentQuarter ? game.quarters[game.currentQuarter - 1] : undefined;
+  const currentMinute = activeQuarter?.startedAt
+    ? Math.max(1, Math.floor((Date.now() - new Date(activeQuarter.startedAt).getTime()) / 60000) + 1)
+    : null;
 
   // Bepaal de volgorde op basis van uit/thuis voor de namen en scores
   const leftName = game.isAway ? (game.opponent || 'Tegenstander') : 'Kaulille';
@@ -32,10 +46,10 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
           {isLive ? '● Live' : 'Laatste wedstrijd'}
         </span>
 
-        {/* Huidig kwart (alleen tijdens een live wedstrijd) */}
+        {/* Huidig kwart + minuut (alleen tijdens een live wedstrijd) */}
         {isLive && game.currentQuarter && (
           <span className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest bg-white/10 text-white">
-            Q{game.currentQuarter}
+            Kwart {game.currentQuarter}{currentMinute != null ? ` - ${currentMinute}'` : ''}
           </span>
         )}
 

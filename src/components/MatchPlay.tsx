@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock } from 'lucide-react';
+import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle } from 'lucide-react';
 import type { Player, Quarter, Game, FieldPosition } from '../types';
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
 }
 
 type QuickStep = 'menu' | 'select-scorer' | 'select-assist' | 'select-tackler' | 'select-outgoing';
+type EventType = 'goal' | 'tackle' | 'save' | 'opponentGoal' | 'substitution';
 
 export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
@@ -23,6 +24,8 @@ export const MatchPlay: React.FC<Props> = ({
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
   const [quickStep, setQuickStep] = useState<QuickStep>('menu');
   const [pendingScorerId, setPendingScorerId] = useState<number | null>(null);
+  // Welk event uit de chronologische lijst de gebruiker wil verwijderen (met bevestiging).
+  const [deleteTarget, setDeleteTarget] = useState<{ type: EventType; index: number; label: string } | null>(null);
 
   // Reset de "Snel invoeren"-flow bij het wisselen van kwart of weergave
   useEffect(() => {
@@ -108,42 +111,100 @@ export const MatchPlay: React.FC<Props> = ({
   const rightName = currentGame.isAway ? 'Kaulille' : (currentGame.opponent || 'Tegenstander');
   const rightScore = currentGame.isAway ? totalOurGoals : totalOpponentGoals;
 
-  // Chronologische lijst van alle events dit kwart (voor de lijstweergave, enkel ter info).
-  type TimelineEntry = { minute: number; icon: React.ReactNode; text: React.ReactNode; key: string };
+  // Chronologische lijst van alle events dit kwart (lijstweergave). type+index verwijzen naar
+  // de plek in de eigen array van dat event, zodat verwijderen precies dat event treft.
+  type TimelineEntry = { minute: number; icon: React.ReactNode; text: React.ReactNode; label: string; type: EventType; index: number; key: string };
   const timeline: TimelineEntry[] = [
     ...quarter.goalEvents.map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
       key: `goal-${i}`,
+      type: 'goal',
+      index: i,
       icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
       text: (
         <>Goal <b>{getName(e.scorerId)}</b>{e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}</>
       ),
+      label: `Goal ${getName(e.scorerId)}${e.assistId != null ? ` (Assist: ${getName(e.assistId)})` : ''}`,
     })),
     ...(quarter.tackleEvents || []).map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
       key: `tackle-${i}`,
+      type: 'tackle',
+      index: i,
       icon: <Axe size={14} className="text-blue-600 shrink-0" />,
       text: <>Tackle <b>{getName(e.playerId)}</b></>,
+      label: `Tackle ${getName(e.playerId)}`,
     })),
     ...(quarter.saveEvents || []).map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
       key: `save-${i}`,
+      type: 'save',
+      index: i,
       icon: <Shield size={14} className="text-emerald-600 shrink-0" />,
       text: <>Redding <b>{getName(e.playerId)}</b></>,
+      label: `Redding ${getName(e.playerId)}`,
     })),
     ...(quarter.opponentGoalEvents || []).map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
       key: `opp-${i}`,
+      type: 'opponentGoal',
+      index: i,
       icon: <Target size={14} className="text-red-600 shrink-0" />,
       text: 'Tegendoelpunt',
+      label: 'Tegendoelpunt',
     })),
     ...substitutions.map((s, i): TimelineEntry => ({
       minute: s.minute ?? 0,
       key: `sub-${i}`,
+      type: 'substitution',
+      index: i,
       icon: <RefreshCw size={14} className="text-gray-500 shrink-0" />,
-      text: <>Wissel: <b>{getName(s.outId)}</b> uit - <b>{getName(s.inId)}</b> in</>,
+      text: (
+        <>
+          Wissel:{' '}
+          <Triangle size={9} className="inline rotate-180 fill-red-500 text-red-500 -translate-y-0.4" /> <b>{getName(s.outId)}</b> -{' '}
+          <Triangle size={9} className="inline fill-green-500 text-green-500 -translate-y-0.4" /> <b>{getName(s.inId)}</b>
+        </>
+      ),
+      label: `Wissel: ${getName(s.outId)} uit - ${getName(s.inId)} in`,
     })),
   ].sort((a, b) => a.minute - b.minute);
+
+  // Verwijdert één specifiek event (na bevestiging) uit de bijhorende array.
+  const deleteEvent = (type: EventType, index: number) => {
+    switch (type) {
+      case 'goal':
+        onUpdateQuarter({ goalEvents: quarter.goalEvents.filter((_, i) => i !== index) });
+        break;
+      case 'tackle':
+        onUpdateQuarter({ tackleEvents: quarter.tackleEvents.filter((_, i) => i !== index) });
+        break;
+      case 'save':
+        onUpdateQuarter({ saveEvents: quarter.saveEvents.filter((_, i) => i !== index) });
+        break;
+      case 'opponentGoal':
+        onUpdateQuarter({ opponentGoalEvents: quarter.opponentGoalEvents.filter((_, i) => i !== index) });
+        break;
+      case 'substitution': {
+        // Wissel ongedaan maken: invaller terug naar de bank, uitgaande speler terug op het veld,
+        // en de positie die de invaller had overgenomen teruggeven aan de oorspronkelijke speler
+        // — zodat de opstelling/wisselspelers weer exact kloppen alsof de wissel nooit gebeurde.
+        // (Bij latere, opeenvolgende wissels met dezelfde spelers is dit best-effort.)
+        const sub = substitutions[index];
+        const newSubstitutions = substitutions.filter((_, i) => i !== index);
+
+        const newSubs = substitutes.filter((id: number) => id !== sub.outId);
+        if (!newSubs.includes(sub.inId)) newSubs.push(sub.inId);
+
+        const lineup = quarter.lineup || {};
+        const takenOverPosition = (Object.keys(lineup) as FieldPosition[]).find(pos => lineup[pos] === sub.inId);
+        const newLineup = takenOverPosition ? { ...lineup, [takenOverPosition]: sub.outId } : lineup;
+
+        onUpdateQuarter({ substitutions: newSubstitutions, substitutes: newSubs, lineup: newLineup });
+        break;
+      }
+    }
+  };
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -228,10 +289,41 @@ export const MatchPlay: React.FC<Props> = ({
                   <span className="w-7 text-right text-[11px] font-black text-gray-400 tabular-nums shrink-0">{item.minute}'</span>
                   {item.icon}
                   <span className="text-xs font-bold text-[#04174C] flex-1">{item.text}</span>
+                  <button
+                    onClick={() => setDeleteTarget({ type: item.type, index: item.index, label: item.label })}
+                    className="text-gray-300 hover:text-red-500 transition-colors p-1 shrink-0"
+                  >
+                    <CloseIcon size={16} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* BEVESTIGING VOOR HET VERWIJDEREN VAN EEN EVENT */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setDeleteTarget(null)}>
+          <div className="bg-white p-6 rounded-3xl shadow-2xl max-w-xs w-full text-center" onMouseDown={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} />
+            </div>
+            <h3 className="text-lg font-black text-[#04174C] mb-2">Event verwijderen?</h3>
+            <p className="text-xs text-gray-500 mb-6">"{deleteTarget.label}" wordt verwijderd. Deze actie kan niet ongedaan worden gemaakt.</p>
+            <div className="flex gap-3">
+              <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setDeleteTarget(null)}>Nee</button>
+              <button
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100"
+                onClick={() => {
+                  deleteEvent(deleteTarget.type, deleteTarget.index);
+                  setDeleteTarget(null);
+                }}
+              >
+                Ja
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

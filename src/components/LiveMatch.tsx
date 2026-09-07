@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { X, List, LayoutGrid, ListChecks } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Player, Game } from '../types';
+import type { Player, Game, Quarter } from '../types';
+import { FIELD_POSITIONS } from '../utils/positions';
 
 // Importeer de sub-componenten
 import { MatchSetup } from './MatchSetup';
@@ -20,25 +21,30 @@ interface Props {
 
 type Step = 'setup' | 'play' | 'review';
 
+// Zijn alle 8 posities van dit kwart al ingevuld? Zo ja, hoeft de opstelling-wizard niet
+// getoond te worden (bv. bij het bewerken van een al afgeronde wedstrijd) — je komt dan
+// meteen op het actiescherm, en kan de opstelling nog altijd aanpassen via "Opstelling wijzigen".
+const isLineupComplete = (quarter?: Quarter) =>
+  !!quarter && FIELD_POSITIONS.every(({ value }) => quarter.lineup?.[value] != null);
+
 export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame, onSave, onCancel }) => {
   // Bij het (verder) invullen van een live wedstrijd (vanuit het Dashboard) starten we
   // meteen in het juiste kwart in plaats van opnieuw bij de opstelling.
   const [currentStep, setCurrentStep] = useState<Step>(() =>
     currentGame.status === 'active' ? 'play' : 'setup'
   );
-  const [activeQuarterIdx, setActiveQuarterIdx] = useState(() => {
-    if (currentGame.status === 'active' && currentGame.currentQuarter) {
-      return Math.min(Math.max(currentGame.currentQuarter - 1, 0), 3);
-    }
-    return 0;
-  });
+  const initialQuarterIdx = currentGame.status === 'active' && currentGame.currentQuarter
+    ? Math.min(Math.max(currentGame.currentQuarter - 1, 0), 3)
+    : 0;
+  const [activeQuarterIdx, setActiveQuarterIdx] = useState(initialQuarterIdx);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [playViewMode, setPlayViewMode] = useState<'list' | 'quick'>('quick');
 
-  // Aan het begin van elk kwart moet eerst de basisopstelling bevestigd worden,
-  // voor er doelpunten/tackles/... geregistreerd kunnen worden.
+  // Aan het begin van elk kwart moet de basisopstelling bevestigd zijn voor er doelpunten/
+  // tackles/... geregistreerd kunnen worden — maar staat die al volledig (bv. bij het bewerken
+  // van een afgeronde wedstrijd), dan gaan we meteen naar het actiescherm.
   const [quarterPhase, setQuarterPhase] = useState<'lineup' | 'actions'>(() =>
-    currentGame.status === 'active' ? 'actions' : 'lineup'
+    isLineupComplete(currentGame.quarters[initialQuarterIdx]) ? 'actions' : 'lineup'
   );
   const isFirstQuarterPhaseSync = useRef(true);
 
@@ -50,13 +56,15 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentStep, activeQuarterIdx]);
 
-  // Telkens als we van kwart wisselen (voor- of achteruit) moet de opstelling opnieuw bevestigd worden.
+  // Telkens als we van kwart wisselen (voor- of achteruit): enkel de opstelling-wizard tonen
+  // als die voor dát kwart nog niet volledig is, anders meteen naar het actiescherm.
   useEffect(() => {
     if (isFirstQuarterPhaseSync.current) {
       isFirstQuarterPhaseSync.current = false;
       return;
     }
-    setQuarterPhase('lineup');
+    setQuarterPhase(isLineupComplete(currentGame.quarters[activeQuarterIdx]) ? 'actions' : 'lineup');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeQuarterIdx]);
 
   // Zodra het kwart écht start (opstelling bevestigd), leggen we het startuur vast — alle
