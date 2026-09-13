@@ -140,7 +140,12 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                                         ? q.goalEvents.map((e, i) => (
                                             <span key={i}>
                                               {i > 0 && ', '}
-                                              {getPlayerName(e.scorerId)}{e.assistId !== null && <span className="font-normal text-gray-500"> (assist: {getPlayerName(e.assistId)})</span>}
+                                              {e.scorerId == null ? 'Eigen doelpunt tegenstander' : (
+                                                <>
+                                                  {getPlayerName(e.scorerId)}
+                                                  {e.assistId !== null && <span className="font-normal text-gray-500"> (assist: {getPlayerName(e.assistId)})</span>}
+                                                </>
+                                              )}
                                             </span>
                                           ))
                                         : 'Geen'}

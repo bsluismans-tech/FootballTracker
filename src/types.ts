@@ -42,8 +42,10 @@ export type GoalType =
 // playersOnField legt vast wie er van ons team op het veld stond op het moment van het doelpunt,
 // zodat achteraf betrouwbaar te analyseren is welke spelerscombinaties samen goed scoren.
 // minute/goalType zijn optioneel: bestaande, vóór deze features ingevoerde doelpunten hebben dit niet.
+// scorerId is null bij een eigen doelpunt van de tegenstander (goalType 'owngoal'): dat telt wel
+// mee voor onze score, maar heeft geen doelpuntenmaker/assist uit onze ploeg.
 export interface GoalEvent {
-  scorerId: number;
+  scorerId: number | null;
   assistId: number | null;
   playersOnField: number[];
   minute?: number;

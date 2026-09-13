@@ -112,7 +112,11 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   finishedGames.forEach(g => {
     g.quarters.forEach(q => {
       q.goalEvents.forEach(e => {
-        goalsByPlayer[e.scorerId] = (goalsByPlayer[e.scorerId] || 0) + 1;
+        // scorerId is null bij een eigen doelpunt van de tegenstander — telt mee voor de
+        // teamscore (elders al zo berekend), maar niet voor een individuele topschutter.
+        if (e.scorerId != null) {
+          goalsByPlayer[e.scorerId] = (goalsByPlayer[e.scorerId] || 0) + 1;
+        }
         if (e.assistId !== null) {
           assistsByPlayer[e.assistId] = (assistsByPlayer[e.assistId] || 0) + 1;
         }

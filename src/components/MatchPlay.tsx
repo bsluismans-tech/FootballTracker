@@ -85,7 +85,7 @@ export const MatchPlay: React.FC<Props> = ({
 
   // Voegt een nieuw doelpunt toe, met een snapshot van wie er op dat moment op het veld stond,
   // de minuut waarop het gebeurde, en hoe het doelpunt tot stand kwam.
-  const addGoal = (scorerId: number, assistId: number | null, goalType: GoalType) => {
+  const addGoal = (scorerId: number | null, assistId: number | null, goalType: GoalType) => {
     onUpdateQuarter({
       goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id), minute: getCurrentMinute(), goalType }]
     });
@@ -139,14 +139,18 @@ export const MatchPlay: React.FC<Props> = ({
       type: 'goal',
       index: i,
       icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
-      text: (
+      text: e.scorerId == null ? (
+        <>Goal — <b>Eigen doelpunt tegenstander</b></>
+      ) : (
         <>
           Goal <b>{getName(e.scorerId)}</b>
           {e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}
           {e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}
         </>
       ),
-      label: `Goal ${getName(e.scorerId)}${e.assistId != null ? ` (Assist: ${getName(e.assistId)})` : ''}${e.goalType ? ` — ${GOAL_TYPE_LABELS[e.goalType]}` : ''}`,
+      label: e.scorerId == null
+        ? 'Goal — Eigen doelpunt tegenstander'
+        : `Goal ${getName(e.scorerId)}${e.assistId != null ? ` (Assist: ${getName(e.assistId)})` : ''}${e.goalType ? ` — ${GOAL_TYPE_LABELS[e.goalType]}` : ''}`,
     })),
     ...(quarter.tackleEvents || []).map((e, i): TimelineEntry => ({
       minute: e.minute ?? 0,
@@ -472,6 +476,17 @@ export const MatchPlay: React.FC<Props> = ({
                     {p.name}
                   </button>
                 ))}
+                {/* Eigen doelpunt van de tegenstander: telt mee voor onze score, maar heeft
+                    geen doelpuntenmaker/assist uit onze ploeg — dus scorer/assist overslaan. */}
+                <button
+                  onClick={() => {
+                    addGoal(null, null, 'owngoal');
+                    setQuickStep('menu');
+                  }}
+                  className="h-20 px-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                >
+                  Eigen doelpunt
+                </button>
               </div>
             </div>
           )}
