@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { Hand } from 'lucide-react';
-import type { Player, Quarter, FieldPosition } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Hand, Clock } from 'lucide-react';
+import type { Player, Quarter, FieldPosition, Game } from '../types';
+import { formatMinute, getQuarterMinute } from '../utils/matchTime';
 
 interface Props {
   quarter: Quarter;
   presentPlayers: Player[];
+  currentGame: Game;
   onUpdateQuarter: (updates: Partial<Quarter>) => void;
+  onCancel: () => void;
 }
 
 // Volgorde waarin de focus automatisch verspringt na het toewijzen van een speler.
@@ -44,9 +47,33 @@ const FORMATION_ROWS: FieldPosition[][] = [
 const computeInitialFocus = (lineup: Partial<Record<FieldPosition, number>>): FieldPosition =>
   POSITION_ORDER.find(pos => lineup[pos] == null) || 'keeper';
 
-export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpdateQuarter }) => {
+export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, currentGame, onUpdateQuarter, onCancel }) => {
   const [focusedPosition, setFocusedPosition] = useState<FieldPosition>(() =>
     computeInitialFocus(quarter.lineup || {})
+  );
+
+  // Live minuutklok: elke seconde een re-render forceren zodat de score-header hierboven
+  // (net als bij het invoeren van events) de verstreken tijd blijft bijwerken.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => forceTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getCurrentMinute = (): number => getQuarterMinute(quarter);
+
+  const totalOurGoals = currentGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
+  const totalOpponentGoals = currentGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
+  const leftName = currentGame.isAway ? (currentGame.opponent || 'Tegenstander') : 'Kaulille';
+  const leftScore = currentGame.isAway ? totalOpponentGoals : totalOurGoals;
+  const rightName = currentGame.isAway ? 'Kaulille' : (currentGame.opponent || 'Tegenstander');
+  const rightScore = currentGame.isAway ? totalOurGoals : totalOpponentGoals;
+
+  // Was de opstelling al volledig toen dit scherm geopend werd? Dan zit je hier via "Opstelling
+  // wijzigen" (bewerken), en tonen we een Annuleren-knop om terug te gaan zonder verder te wijzigen.
+  // Bij de allereerste, nog onvolledige opstelling van een kwart is er niets om naar terug te keren.
+  const [canCancel] = useState<boolean>(() =>
+    POSITION_ORDER.every(pos => (quarter.lineup || {})[pos] != null)
   );
 
   const sortedPresentPlayers = [...presentPlayers].sort((a, b) => a.name.localeCompare(b.name));
@@ -109,7 +136,43 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, onUpda
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+
+      {/* ALGEMENE SCORE BOVENAAN (THUIS/UIT DYNAMISCH) — enkel bij het wijzigen van een reeds
+          bevestigde opstelling tijdens een lopend kwart, net als bij het invoeren van events.
+          Bij de allereerste, nog lege opstelling van een kwart is er nog geen kwart aan de gang
+          (de klok start pas als de opstelling bevestigd wordt), dus tonen we hier niets. */}
+      {canCancel && (
+        <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8 relative">
+          <div className="text-center flex-1">
+            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+              {leftName}
+            </p>
+            <p className="text-3xl font-black tabular-nums">{leftScore}</p>
+          </div>
+          <div className="text-xl font-black opacity-20 px-4">-</div>
+          <div className="text-center flex-1">
+            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+              {rightName}
+            </p>
+            <p className="text-3xl font-black tabular-nums">{rightScore}</p>
+          </div>
+          <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-full px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
+            <Clock size={11} /> {formatMinute(getCurrentMinute())}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
+        {/* ANNULEREN (rechtsboven, consistent met de andere stappen) — enkel zichtbaar als je
+            hier via "Opstelling wijzigen" zit, niet bij de allereerste, nog lege opstelling. */}
+        {canCancel && (
+          <div className="flex justify-end mb-2">
+            <button onClick={onCancel} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">
+              Annuleren
+            </button>
+          </div>
+        )}
+
         {/* VISUELE OPSTELLING */}
         <div className="bg-green-50 rounded-2xl border-2 border-green-100 p-4 space-y-6 mb-4">
           {FORMATION_ROWS.map((row, i) => (

@@ -95,6 +95,11 @@ export interface Quarter {
   // Tijdstip waarop dit kwart écht gestart is (bij het verlaten van de opstelling-stap).
   // Alle minuten binnen dit kwart worden berekend als verstreken tijd t.o.v. dit tijdstip.
   startedAt?: string;
+  // Tijdstip waarop dit kwart afgelopen is ("Einde kwart N" / "Einde wedstrijd" geklikt).
+  // Zodra dit gezet is, bevriest de minuutklok op dit tijdstip (zie getQuarterMinute in
+  // utils/matchTime.ts) i.p.v. gewoon door te tellen — anders zou een wedstrijd die lang na
+  // afloop bewerkt wordt een onmogelijke tijd zoals "15+60'" tonen.
+  endedAt?: string;
 }
 
 export type GameResult = 'win' | 'draw' | 'loss';

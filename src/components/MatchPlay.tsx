@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks, Bandage } from 'lucide-react';
 import type { Player, Quarter, Game, FieldPosition, GoalType } from '../types';
-import { formatMinute } from '../utils/matchTime';
+import { formatMinute, getQuarterMinute } from '../utils/matchTime';
 import { GOAL_TYPES, GOAL_TYPE_LABELS } from '../utils/goalTypes';
 
 interface Props {
@@ -51,11 +51,7 @@ export const MatchPlay: React.FC<Props> = ({
     return () => clearInterval(interval);
   }, []);
 
-  const getCurrentMinute = (): number => {
-    if (!quarter.startedAt) return 1;
-    const elapsedMs = Date.now() - new Date(quarter.startedAt).getTime();
-    return Math.max(1, Math.floor(elapsedMs / 60000) + 1);
-  };
+  const getCurrentMinute = (): number => getQuarterMinute(quarter);
 
   const substitutes = quarter.substitutes || [];
   const substitutions = quarter.substitutions || [];

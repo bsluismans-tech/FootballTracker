@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Game } from '../types';
-import { formatMinute } from '../utils/matchTime';
+import { formatMinute, getQuarterMinute } from '../utils/matchTime';
 
 interface Props {
   game: Game;
@@ -22,9 +22,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
   const opponentGoals = game.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
 
   const activeQuarter = game.currentQuarter ? game.quarters[game.currentQuarter - 1] : undefined;
-  const currentMinute = activeQuarter?.startedAt
-    ? Math.max(1, Math.floor((Date.now() - new Date(activeQuarter.startedAt).getTime()) / 60000) + 1)
-    : null;
+  const currentMinute = activeQuarter?.startedAt ? getQuarterMinute(activeQuarter) : null;
 
   // Bepaal de volgorde op basis van uit/thuis voor de namen en scores
   const leftName = game.isAway ? (game.opponent || 'Tegenstander') : 'Kaulille';

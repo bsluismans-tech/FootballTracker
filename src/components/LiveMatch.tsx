@@ -46,6 +46,11 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
   const [quarterPhase, setQuarterPhase] = useState<'lineup' | 'actions'>(() =>
     isLineupComplete(currentGame.quarters[initialQuarterIdx]) ? 'actions' : 'lineup'
   );
+  // Onderscheid tussen de allereerste, nog lege opstelling-ingave van een kwart (Terug-knop
+  // moet er staan, net als bij elke andere stap) en het nadien wijzigen van een al bevestigde
+  // opstelling via "Opstelling wijzigen" tijdens het lopende kwart (dan geen Terug-knop, enkel
+  // Bevestigen — het kwart is al bezig, er is niets om "terug" naartoe te gaan).
+  const [isEditingLineup, setIsEditingLineup] = useState(false);
   const isFirstQuarterPhaseSync = useRef(true);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,20 +83,23 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       return;
     }
     setQuarterPhase(isLineupComplete(currentGame.quarters[activeQuarterIdx]) ? 'actions' : 'lineup');
+    setIsEditingLineup(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeQuarterIdx]);
 
-  // Zodra het kwart écht start (opstelling bevestigd), leggen we het startuur vast — alle
-  // minuten van events in dit kwart worden berekend t.o.v. dit tijdstip (zie MatchPlay).
-  useEffect(() => {
-    if (currentStep === 'play' && quarterPhase === 'actions') {
-      const q = currentGame.quarters[activeQuarterIdx];
-      if (q && !q.startedAt) {
-        updateQuarter(activeQuarterIdx, { startedAt: new Date().toISOString() });
-      }
+  // Zodra het kwart écht start (opstelling bevestigd via de Bevestigen-knop hieronder), leggen
+  // we het startuur vast — alle minuten van events in dit kwart worden berekend t.o.v. dit
+  // tijdstip (zie MatchPlay). Bewust GEEN generiek effect op quarterPhase/activeQuarterIdx: bij
+  // het overstappen naar een volgend kwart wisselen quarterPhase en activeQuarterIdx niet in
+  // dezelfde render-cyclus, waardoor zo'n effect de klok al liet starten tijdens de drinkpauze,
+  // vóórdat de opstelling van dat kwart bevestigd was. Zie startQuarterActions hieronder.
+  const startQuarterActions = () => {
+    const q = currentGame.quarters[activeQuarterIdx];
+    if (q && !q.startedAt) {
+      updateQuarter(activeQuarterIdx, { startedAt: new Date().toISOString() });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, quarterPhase, activeQuarterIdx]);
+    setQuarterPhase('actions');
+  };
 
   // --- REAL-TIME FIREBASE SYNC ---
   // Telkens als currentGame wijzigt, sturen we de data naar de database.
@@ -136,6 +144,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     } else if (currentStep === 'play') {
       // Bij 'lineup' gebeurt de voortgang automatisch zodra de opstelling compleet is
       // (zie QuarterLineup's onConfirm-call), dus deze knop is dan niet zichtbaar.
+      // Kwart is nu écht afgelopen: klok bevriezen op dit moment (zie getQuarterMinute), zodat
+      // later bewerken/toevoegen geen onmogelijke tijd zoals "15+60'" oplevert.
+      const endingQuarter = currentGame.quarters[activeQuarterIdx];
+      if (endingQuarter && !endingQuarter.endedAt) {
+        updateQuarter(activeQuarterIdx, { endedAt: new Date().toISOString() });
+      }
       if (activeQuarterIdx < 3) {
         setActiveQuarterIdx(activeQuarterIdx + 1);
       } else {
@@ -259,7 +273,9 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
         <QuarterLineup
           quarter={currentGame.quarters[activeQuarterIdx]}
           presentPlayers={presentPlayers}
+          currentGame={currentGame}
           onUpdateQuarter={(updates) => updateQuarter(activeQuarterIdx, updates)}
+          onCancel={() => { setQuarterPhase('actions'); setIsEditingLineup(false); }}
         />
       )}
 
@@ -274,7 +290,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             handleButtonClick={handleButtonClick}
             handlePressStart={handlePressStart}
             handlePressEnd={handlePressEnd}
-            onEditLineup={() => setQuarterPhase('lineup')}
+            onEditLineup={() => { setQuarterPhase('lineup'); setIsEditingLineup(true); }}
             viewMode={playViewMode}
           />
         </div>
@@ -321,8 +337,9 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
 <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-50">
   <div className="max-w-2xl mx-auto flex gap-3">
 
-    {/* TERUG KNOP (Alleen tonen als we niet in setup zitten) */}
-    {currentStep !== 'setup' && (
+    {/* TERUG KNOP (Alleen tonen als we niet in setup zitten, en niet tijdens het wijzigen van
+        een al bevestigde opstelling tijdens een lopend kwart — daar hoort enkel Bevestigen) */}
+    {currentStep !== 'setup' && !(quarterPhase === 'lineup' && isEditingLineup) && (
       <button
         onClick={handleBack}
         className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-3 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
@@ -337,7 +354,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     {/* BEVESTIGEN-KNOP tijdens de opstelling-wizard: pas actief zodra alle 8 posities ingevuld zijn */}
     {currentStep === 'play' && quarterPhase === 'lineup' ? (
       <button
-        onClick={() => setQuarterPhase('actions')}
+        onClick={() => { startQuarterActions(); setIsEditingLineup(false); }}
         disabled={!isLineupComplete(currentGame.quarters[activeQuarterIdx])}
         className={`flex-1 py-3 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-widest text-sm ${
           isLineupComplete(currentGame.quarters[activeQuarterIdx])
