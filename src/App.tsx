@@ -5,6 +5,7 @@ import { Navigation } from './components/Navigation';
 import { GameHistory } from './components/GameHistory';
 import { LiveMatch } from './components/LiveMatch';
 import { Settings } from './components/Settings';
+import { Insights } from './components/Insights';
 
 // Importeer Firebase config en Firestore functies
 import { db } from './firebase'; 
@@ -31,6 +32,14 @@ export default function App() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const logoTapCountRef = useRef(0);
   const logoTapTimerRef = useRef<number | null>(null);
+
+  // Wordt Admin-mode uitgeschakeld terwijl Inzichten (admin-only) open staat, dan terug naar
+  // het Dashboard i.p.v. een leeg scherm te tonen.
+  useEffect(() => {
+    if (!isAdminMode && view === 'insights') {
+      setView('dashboard');
+    }
+  }, [isAdminMode, view]);
 
   const handleLogoTap = () => {
     logoTapCountRef.current += 1;
@@ -174,6 +183,14 @@ export default function App() {
         />
       )}
 
+      {/* Enkel toegankelijk in Admin-mode; wordt in Navigation.tsx ook alleen dan getoond */}
+      {view === 'insights' && isAdminMode && (
+        <Insights
+          games={games}
+          players={players}
+        />
+      )}
+
       {view === 'history' && (
         <GameHistory
           games={games}
@@ -217,9 +234,10 @@ export default function App() {
       )}
 
       {view !== 'game' && (
-        <Navigation 
-          view={view} 
-          setView={setView} 
+        <Navigation
+          view={view}
+          setView={setView}
+          isAdminMode={isAdminMode}
         />
       )}
     </div>
