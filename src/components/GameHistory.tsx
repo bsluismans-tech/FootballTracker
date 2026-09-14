@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Trash2, ChevronDown, ChevronUp, Shield, Goal, Gamepad2, Edit3 } from 'lucide-react';
+import { Check, X, Trash2, ChevronDown, ChevronUp, Gamepad2, Edit3 } from 'lucide-react';
 import type { Game, Player } from '../types';
+import { buildEventTimeline } from '../utils/eventTimeline';
+import { formatMinute } from '../utils/matchTime';
 
 interface Props {
   games: Game[];
@@ -30,11 +32,6 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
   // --- FILTERING ---
   // Alleen voltooide wedstrijden tonen in de geschiedenis
   const finishedGames = games.filter(g => g.status === 'finished');
-
-  const getPlayerName = (id: number | null) => {
-    if (!id) return 'Geen';
-    return players.find(p => p.id === id)?.name || 'Onbekend';
-  };
 
   const toggleExpand = (id: number) => {
     setExpandedGameId(expandedGameId === id ? null : id);
@@ -126,32 +123,23 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                                   {g.isAway ? `${q.opponentGoalEvents.length}-${q.goalEvents.length}` : `${q.goalEvents.length}-${q.opponentGoalEvents.length}`}
                                 </span>
                               </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-[11px]">
-                                  <Shield size={12} className="text-blue-500" />
-                                  <span className="font-medium text-gray-700">Keeper: {getPlayerName(q.lineup?.keeper ?? null)}</span>
-                                </div>
-                                <div className="flex items-start gap-2 text-[11px] text-gray-600">
-                                  <Goal size={12} className="text-green-500 mt-0.5" />
-                                  <div className="flex-1">
-                                    <span className="font-medium text-gray-700">Goals: </span>
-                                    <span className="font-bold text-gray-700">
-                                      {q.goalEvents.length > 0
-                                        ? q.goalEvents.map((e, i) => (
-                                            <span key={i}>
-                                              {i > 0 && ', '}
-                                              {e.scorerId == null ? 'Eigen doelpunt tegenstander' : (
-                                                <>
-                                                  {getPlayerName(e.scorerId)}
-                                                  {e.assistId !== null && <span className="font-normal text-gray-500"> (assist: {getPlayerName(e.assistId)})</span>}
-                                                </>
-                                              )}
-                                            </span>
-                                          ))
-                                        : 'Geen'}
-                                    </span>
-                                  </div>
-                                </div>
+                              <div className="space-y-1.5">
+                                {(() => {
+                                  const timeline = buildEventTimeline(q, players);
+                                  return timeline.length === 0 ? (
+                                    <p className="text-[11px] text-gray-400 italic">Geen events dit kwart.</p>
+                                  ) : (
+                                    timeline.map(item => (
+                                      <div key={item.key} className="flex items-center gap-2 text-[11px]">
+                                        <span className="w-9 text-right font-black text-gray-400 tabular-nums shrink-0">
+                                          {formatMinute(item.minute)}
+                                        </span>
+                                        {item.icon}
+                                        <span className="text-gray-700 flex-1">{item.text}</span>
+                                      </div>
+                                    ))
+                                  );
+                                })()}
                               </div>
                             </div>
                           ))}
