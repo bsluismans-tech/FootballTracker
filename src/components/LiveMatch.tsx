@@ -17,6 +17,11 @@ interface Props {
   onUpdateGame: (game: Game) => void;
   onSave: () => void;
   onCancel: () => void;
+  // True als dit een reeds afgeronde wedstrijd is die momenteel bewerkt wordt (dan maakt
+  // Annuleren enkel de wijzigingen ongedaan); false bij een volledig nieuwe, nog lopende
+  // wedstrijd (dan verwijdert Annuleren de hele wedstrijd). Bepaalt zowel het gedrag in App.tsx
+  // (onCancel) als de tekst van de bevestigingspop-up hieronder.
+  isEditingCompletedGame: boolean;
 }
 
 type Step = 'setup' | 'play' | 'review';
@@ -27,7 +32,7 @@ type Step = 'setup' | 'play' | 'review';
 const isLineupComplete = (quarter?: Quarter) =>
   !!quarter && FIELD_POSITIONS.every(({ value }) => quarter.lineup?.[value] != null);
 
-export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame, onSave, onCancel }) => {
+export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame, onSave, onCancel, isEditingCompletedGame }) => {
   // Bij het (verder) invullen van een live wedstrijd (vanuit het Dashboard) starten we
   // meteen in het juiste kwart in plaats van opnieuw bij de opstelling.
   const [currentStep, setCurrentStep] = useState<Step>(() =>
@@ -387,7 +392,21 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
         <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4" onMouseDown={() => setShowCancelConfirm(false)}>
           <div className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
             <div className="mb-6 text-lg font-bold text-[#04174C]">
-              Wil je de wedstrijd annuleren? <span className="text-sm font-normal block mt-1 text-gray-500">Alle huidige data gaat verloren op het live dashboard.</span>
+              {isEditingCompletedGame ? (
+                <>
+                  Bewerken annuleren?{' '}
+                  <span className="text-sm font-normal block mt-1 text-gray-500">
+                    De wijzigingen die je maakte worden ongedaan gemaakt. De wedstrijd blijft bestaan zoals ze was.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Wil je de wedstrijd annuleren?{' '}
+                  <span className="text-sm font-normal block mt-1 text-gray-500">
+                    De hele wedstrijd wordt verwijderd.
+                  </span>
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-3">
               <button className="px-4 py-2 rounded-lg font-semibold text-gray-500 hover:bg-gray-100 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>

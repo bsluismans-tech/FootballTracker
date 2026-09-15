@@ -9,7 +9,7 @@ import { Insights } from './components/Insights';
 
 // Importeer Firebase config en Firestore functies
 import { db } from './firebase'; 
-import { collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { getSeasonId } from './utils/season';
 
 export default function App() {
@@ -211,21 +211,30 @@ export default function App() {
           players={players} 
           onUpdateGame={setCurrentGame} 
           onSave={saveGame}
+          // Let op: editBackup wordt ook gezet bij het hervatten van een nog LOPENDE wedstrijd
+          // vanuit het Dashboard (niet enkel bij het bewerken van een al afgeronde wedstrijd) —
+          // enkel bij status 'finished' gaat het écht om een reeds afgeronde wedstrijd die
+          // bewerkt wordt, waarbij Annuleren de wijzigingen ongedaan moet maken i.p.v. verwijderen.
+          isEditingCompletedGame={editBackup?.status === 'finished'}
           onCancel={async () => {
             if (currentGame) {
               try {
                 const gameRef = doc(db, "games", currentGame.id.toString());
-                if (editBackup) {
-                  // Bewerken geannuleerd: oorspronkelijke (finished) wedstrijd terugzetten
+                if (editBackup?.status === 'finished') {
+                  // Bewerken geannuleerd: oorspronkelijke (finished) wedstrijd terugzetten,
+                  // exact zoals ze was voor het bewerken.
                   await setDoc(gameRef, editBackup);
                 } else {
-                  await updateDoc(gameRef, { status: 'cancelled' });
+                  // Wedstrijd was (nog) niet afgerond — hetzij nieuw gestart, hetzij een lopende
+                  // wedstrijd die hervat werd vanaf het Dashboard: in beide gevallen wordt de
+                  // hele wedstrijd verwijderd bij Annuleren.
+                  await deleteDoc(gameRef);
                 }
               } catch (error) {
                 console.error("Fout bij annuleren:", error);
               }
             }
-            const returnView = editBackup ? editReturnView : 'dashboard';
+            const returnView = editBackup?.status === 'finished' ? editReturnView : 'dashboard';
             setCurrentGame(null);
             setEditBackup(null);
             setView(returnView);
