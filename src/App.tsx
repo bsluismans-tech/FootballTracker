@@ -11,12 +11,16 @@ import { Insights } from './components/Insights';
 import { db } from './firebase'; 
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { getSeasonId } from './utils/season';
+import { useAutoUpdate } from './utils/appUpdate';
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [games, setGames] = useState<Game[]>([]);
 
   const [view, setView] = useState('dashboard');
+
+  // Nieuwe versie automatisch laden, maar nooit midden in het registreren van een wedstrijd.
+  useAutoUpdate(view !== 'game');
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [editBackup, setEditBackup] = useState<Game | null>(null);
   const [editReturnView, setEditReturnView] = useState<'dashboard' | 'history'>('dashboard');
