@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, User, Users, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Player, Game } from '../types';
 import { db } from '../firebase';
 import { doc, setDoc, updateDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
@@ -12,6 +13,7 @@ interface Props {
 
 // --- SUBCOMPONENT: PLAYER STATS MODAL ---
 const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () => void }> = ({ player, games, onClose }) => {
+  const { t } = useTranslation();
   const finishedGames = games.filter(g => g.status === 'finished');
 
   const stats = finishedGames.reduce((acc, game) => {
@@ -39,7 +41,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
         <div className="bg-gradient-to-br from-[#04174C] to-[#052A6B] p-8 text-center relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors p-2"
+            className="absolute top-4 end-4 text-white/50 hover:text-white transition-colors p-2"
           >
             <X size={24} />
           </button>
@@ -47,34 +49,34 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <Star size={40} className="text-yellow-400 fill-yellow-400" />
           </div>
           <h3 className="text-2xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">Speler U10 Kaulille</p>
+          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">{t('team.playerSubtitle')}</p>
         </div>
 
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
             <Gamepad2 size={16} className="text-blue-500 mb-1" />
             <div className="text-xl font-black text-[#04174C]">{stats.matches}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">Matchen</div>
+            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.matches')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
             <Target size={16} className="text-green-500 mb-1" />
             <div className="text-xl font-black text-[#04174C]">{stats.goals}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">Goals</div>
+            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.goals')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
             <Handshake size={16} className="text-yellow-500 mb-1" />
             <div className="text-xl font-black text-[#04174C]">{stats.assists}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">Assists</div>
+            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.assists')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
             <Axe size={16} className="text-red-500 mb-1" />
             <div className="text-xl font-black text-[#04174C]">{stats.tackles}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">Tackles</div>
+            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.tackles')}</div>
           </div>
           {stats.saves > 0 && (
             <div className="col-span-2 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center gap-4">
               <Shield size={16} className="text-purple-500" />
-              <div className="text-sm font-black text-[#04174C]">{stats.saves} Reddingen</div>
+              <div className="text-sm font-black text-[#04174C]">{t('plurals.saves', { count: stats.saves })}</div>
             </div>
           )}
         </div>
@@ -85,6 +87,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
 
 // --- MAIN SETTINGS COMPONENT ---
 export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
+  const { t } = useTranslation();
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
@@ -123,12 +126,12 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
     <div className="max-w-2xl mx-auto p-4 pb-32 space-y-6 select-none">
       <header className="flex items-center gap-2 px-1">
         <Users className="text-[#04174C]" size={24} />
-        <h2 className="text-2xl font-black text-[#04174C] tracking-tight">Ploeg</h2>
+        <h2 className="text-2xl font-black text-[#04174C] tracking-tight">{t('team.title')}</h2>
       </header>
 
       {/* Input Speler (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
-        <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <section dir="ltr" lang="nl" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Nieuwe speler</h3>
           <div className="flex gap-2">
             <input
@@ -199,7 +202,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
 
       {confirm && (
         <div className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setConfirm(null)}>
-          <div className="bg-white p-6 rounded-3xl shadow-2xl max-w-xs w-full text-center" onMouseDown={e => e.stopPropagation()}>
+          <div dir="ltr" lang="nl" className="bg-white p-6 rounded-3xl shadow-2xl max-w-xs w-full text-center" onMouseDown={e => e.stopPropagation()}>
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={28} />
             </div>

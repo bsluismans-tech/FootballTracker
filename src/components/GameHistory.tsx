@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, Trash2, ChevronDown, ChevronUp, Gamepad2, Edit3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Game, Player } from '../types';
+import { getDateLocale } from '../i18n';
 import { buildEventTimeline } from '../utils/eventTimeline';
 import { formatMinute } from '../utils/matchTime';
 
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onEditGame, startNewGame, canStart, isAdminMode, initialExpandedGameId, onExpandConsumed }) => {
+  const { t } = useTranslation();
   const [expandedGameId, setExpandedGameId] = useState<number | null>(initialExpandedGameId ?? null);
 
   // Eenmalig "verbruiken" van de doorgegeven wedstrijd-id, zodat een latere, gewone navigatie
@@ -52,14 +55,14 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
       <div className="flex justify-between items-center mb-8 px-1">
         <div className="flex items-center gap-2">
           <Gamepad2 className="text-[#04174C]" size={24} />
-          <h1 className="text-2xl font-bold text-[#04174C]">Wedstrijden</h1>
+          <h1 className="text-2xl font-bold text-[#04174C]">{t('history.title')}</h1>
         </div>
       </div>
       
       <div className="space-y-4">
         {finishedGames.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl text-center border-2 border-dashed border-gray-200">
-            <p className="text-gray-400 italic font-medium">Nog geen voltooide wedstrijden.</p>
+            <p className="text-gray-400 italic font-medium">{t('history.empty')}</p>
           </div>
         ) : (
           [...finishedGames]
@@ -92,15 +95,16 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                       </div>
                       <div>
                         <div className="text-[10px] font-black text-[#04174C]/40 uppercase tracking-wider">
-                          {new Date(g.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                          {new Date(g.date).toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'short' })}
                         </div>
+                        {/* Thuisploeg altijd links, ook in het Arabisch (zelfde als het scorebord). */}
                         <div className="font-bold text-[#04174C] text-sm sm:text-base leading-tight">
-                          {g.isAway ? `${g.opponent || 'Tegenstander'} - Kaulille` : `Kaulille - ${g.opponent || 'Tegenstander'}`}
+                          <span dir="ltr">{g.isAway ? `${g.opponent || t('common.opponent')} - Kaulille` : `Kaulille - ${g.opponent || t('common.opponent')}`}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="text-xl font-black text-[#04174C] tabular-nums">
+                      <div dir="ltr" className="text-xl font-black text-[#04174C] tabular-nums">
                         {g.isAway ? `${opponentGoals}-${ourGoals}` : `${ourGoals}-${opponentGoals}`}
                       </div>
                       <div className="text-gray-300">
@@ -113,25 +117,25 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                   {isExpanded && (
                     <div className="border-t border-gray-50 bg-gray-50/30 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="mb-6">
-                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Wedstrijdverloop</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">{t('history.course')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {g.quarters.map((q, i) => (
                             <div key={i} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
                               <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-50">
-                                <span className="text-[10px] font-black text-[#04174C] uppercase">Kwart {q.number}</span>
-                                <span className="text-xs font-black text-[#04174C] bg-[#04174C]/5 px-2 py-0.5 rounded">
+                                <span className="text-[10px] font-black text-[#04174C] uppercase">{t('common.quarter', { number: q.number })}</span>
+                                <span dir="ltr" className="text-xs font-black text-[#04174C] bg-[#04174C]/5 px-2 py-0.5 rounded">
                                   {g.isAway ? `${q.opponentGoalEvents.length}-${q.goalEvents.length}` : `${q.goalEvents.length}-${q.opponentGoalEvents.length}`}
                                 </span>
                               </div>
                               <div className="space-y-1.5">
                                 {(() => {
-                                  const timeline = buildEventTimeline(q, players);
+                                  const timeline = buildEventTimeline(q, players, t);
                                   return timeline.length === 0 ? (
-                                    <p className="text-[11px] text-gray-400 italic">Geen events dit kwart.</p>
+                                    <p className="text-[11px] text-gray-400 italic">{t('history.noEvents')}</p>
                                   ) : (
                                     timeline.map(item => (
                                       <div key={item.key} className="flex items-center gap-2 text-[11px]">
-                                        <span className="w-9 text-right font-black text-gray-400 tabular-nums shrink-0">
+                                        <span className="w-9 text-end font-black text-gray-400 tabular-nums shrink-0">
                                           {formatMinute(item.minute)}
                                         </span>
                                         {item.icon}
@@ -155,7 +159,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
 
                       {/* Actie Knoppen (alleen zichtbaar in Admin mode) */}
                       {isAdminMode && (
-                        <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-4">
+                        <div dir="ltr" lang="nl" className="flex justify-between items-center pt-2 border-t border-gray-100 mt-4">
                           <button
                             onClick={(e) => { e.stopPropagation(); onEditGame(g); }}
                             className="flex items-center gap-1.5 text-[#04174C] hover:text-blue-700 font-bold text-[10px] uppercase tracking-wider transition-colors"
@@ -180,7 +184,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
 
       {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
-        <div className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
+        <div dir="ltr" lang="nl" className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={startNewGame}
@@ -196,7 +200,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
       {/* CUSTOM CONFIRMATION POP-UP */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4" onMouseDown={() => setConfirmDelete(null)}>
-          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
+          <div dir="ltr" lang="nl" className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
             <div className="mb-6 text-lg font-bold text-[#04174C]">
               Wedstrijd tegen <span>{confirmDelete.opponent}</span> verwijderen?
             </div>

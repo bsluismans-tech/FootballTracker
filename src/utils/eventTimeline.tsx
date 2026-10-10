@@ -1,7 +1,7 @@
 import React from 'react';
 import { Goal, Axe, Shield, Target, Bandage, RefreshCw, Triangle } from 'lucide-react';
+import type { TFunction } from 'i18next';
 import type { Quarter, Player } from '../types';
-import { GOAL_TYPE_LABELS } from './goalTypes';
 
 // Read-only chronologische tijdslijn van alle events in één kwart — gebruikt in Wedstrijden
 // (achteraf bekijken, zonder te moeten editeren). Voor de live invoerscreen (MatchPlay.tsx) is
@@ -13,9 +13,11 @@ export interface TimelineItem {
   text: React.ReactNode;
 }
 
-export const buildEventTimeline = (quarter: Quarter, players: Player[]): TimelineItem[] => {
+// `t` komt van useTranslation() in de aanroepende component, zodat de tijdslijn mee wisselt
+// van taal (deze tijdslijn is publiek zichtbaar en wordt dus vertaald).
+export const buildEventTimeline = (quarter: Quarter, players: Player[], t: TFunction): TimelineItem[] => {
   const getName = (id?: number | null) =>
-    id != null ? players.find(p => p.id === id)?.name || 'Onbekend' : 'Onbekend';
+    id != null ? players.find(p => p.id === id)?.name || t('timeline.unknown') : t('timeline.unknown');
 
   const items: TimelineItem[] = [
     ...quarter.goalEvents.map((e, i): TimelineItem => ({
@@ -23,12 +25,12 @@ export const buildEventTimeline = (quarter: Quarter, players: Player[]): Timelin
       minute: e.minute ?? 0,
       icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
       text: e.scorerId == null ? (
-        <>Goal — <b>Eigen doelpunt tegenstander</b></>
+        <>{t('timeline.goal')} — <b>{t('timeline.ownGoalOpponent')}</b></>
       ) : (
         <>
-          Goal <b>{getName(e.scorerId)}</b>
-          {e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}
-          {e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}
+          {t('timeline.goal')} <b>{getName(e.scorerId)}</b>
+          {e.assistId != null && <span className="text-gray-400 font-normal"> ({t('timeline.assist')}: {getName(e.assistId)})</span>}
+          {e.goalType && <span className="text-gray-400 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}
         </>
       ),
     })),
@@ -36,25 +38,25 @@ export const buildEventTimeline = (quarter: Quarter, players: Player[]): Timelin
       key: `tackle-${i}`,
       minute: e.minute ?? 0,
       icon: <Axe size={14} className="text-blue-600 shrink-0" />,
-      text: <>Tackle <b>{getName(e.playerId)}</b></>,
+      text: <>{t('timeline.tackle')} <b>{getName(e.playerId)}</b></>,
     })),
     ...(quarter.saveEvents || []).map((e, i): TimelineItem => ({
       key: `save-${i}`,
       minute: e.minute ?? 0,
       icon: <Shield size={14} className="text-emerald-600 shrink-0" />,
-      text: <>Redding <b>{getName(e.playerId)}</b></>,
+      text: <>{t('timeline.save')} <b>{getName(e.playerId)}</b></>,
     })),
     ...(quarter.opponentGoalEvents || []).map((e, i): TimelineItem => ({
       key: `opp-${i}`,
       minute: e.minute ?? 0,
       icon: <Target size={14} className="text-red-600 shrink-0" />,
-      text: <>Tegendoelpunt{e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}</>,
+      text: <>{t('timeline.opponentGoal')}{e.goalType && <span className="text-gray-400 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}</>,
     })),
     ...(quarter.injuryEvents || []).map((e, i): TimelineItem => ({
       key: `injury-${i}`,
       minute: e.minute ?? 0,
       icon: <Bandage size={14} className="text-orange-600 shrink-0" />,
-      text: <>Blessure <b>{getName(e.playerId)}</b></>,
+      text: <>{t('timeline.injury')} <b>{getName(e.playerId)}</b></>,
     })),
     ...(quarter.substitutions || []).map((s, i): TimelineItem => ({
       key: `sub-${i}`,
@@ -62,7 +64,7 @@ export const buildEventTimeline = (quarter: Quarter, players: Player[]): Timelin
       icon: <RefreshCw size={14} className="text-gray-500 shrink-0" />,
       text: (
         <>
-          Wissel:{' '}
+          {t('timeline.substitution')}:{' '}
           <Triangle size={9} className="inline rotate-180 fill-red-500 text-red-500 -translate-y-0.4" /> <b>{getName(s.outId)}</b> -{' '}
           <Triangle size={9} className="inline fill-green-500 text-green-500 -translate-y-0.4" /> <b>{getName(s.inId)}</b>
         </>

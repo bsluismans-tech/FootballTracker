@@ -1,1 +1,6 @@
 @import "tailwindcss";
+/* Arabisch is een doorlopend schrift: extra letterafstand (tracking-*) knipt de verbonden
+   letters los. :lang(ar) geldt niet voor de admin-schermen, want die staan op lang="nl". */
+:lang(ar) * {
+  letter-spacing: normal !important;
+}

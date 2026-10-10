@@ -8,9 +8,9 @@ export const formatMinute = (minute: number): string => {
 };
 
 // Uitgeschreven variant ("7 min" / "15+2 min") voor het live-scorebord op het Dashboard, waar de
-// minuut groot en centraal staat en een apostrof minder duidelijk leest.
-export const formatMinuteLong = (minute: number): string =>
-  formatMinute(minute).replace("'", ' min');
+// minuut groot en centraal staat en een apostrof minder duidelijk leest. De eenheid is vertaald.
+export const formatMinuteLong = (minute: number, unit = 'min'): string =>
+  formatMinute(minute).replace("'", ` ${unit}`);
 
 // Berekent de huidige minuut van een kwart. Is het kwart al afgelopen (endedAt vastgelegd, zie
 // LiveMatch's handleNext), dan bevriezen we op de minuut van dat moment — anders zou het
