@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile, Eye } from 'lucide-react';
 import { LiveScoreboard } from './LiveScoreboard';
 import type { Player, Game } from '../types';
 import { getSeasonId } from '../utils/season';
+import { useLiveViewerCount } from '../utils/liveViewers';
 
 interface Props {
   players: Player[];
@@ -20,6 +21,7 @@ interface Props {
 export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame, onViewGame }) => {
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
+  const liveViewerCount = useLiveViewerCount(liveGame ? (liveGame.id as number) : null);
 
   // REAL-TIME FIREBASE LISTENERS
   useEffect(() => {
@@ -146,6 +148,11 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             className={isAdminMode ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}
           >
             <LiveScoreboard game={liveGame} isLive={true} />
+            {liveViewerCount != null && liveViewerCount > 0 && (
+              <p className="flex items-center justify-center gap-1 text-[9px] text-[#04174C]/30 font-bold uppercase tracking-widest mt-2">
+                <Eye size={10} /> {liveViewerCount} {liveViewerCount === 1 ? 'kijker volgt mee' : 'kijkers volgen mee'}
+              </p>
+            )}
             {isAdminMode && (
               <p className="text-center text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2">
                 Tik om de wedstrijd verder te registreren

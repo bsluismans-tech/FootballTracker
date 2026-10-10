@@ -7,6 +7,11 @@ export const formatMinute = (minute: number): string => {
   return `${QUARTER_DURATION_MINUTES}+${minute - QUARTER_DURATION_MINUTES}'`;
 };
 
+// Uitgeschreven variant ("7 min" / "15+2 min") voor het live-scorebord op het Dashboard, waar de
+// minuut groot en centraal staat en een apostrof minder duidelijk leest.
+export const formatMinuteLong = (minute: number): string =>
+  formatMinute(minute).replace("'", ' min');
+
 // Berekent de huidige minuut van een kwart. Is het kwart al afgelopen (endedAt vastgelegd, zie
 // LiveMatch's handleNext), dan bevriezen we op de minuut van dat moment — anders zou het
 // bewerken van een wedstrijd lang na afloop (bv. een uur later) tot een onmogelijke tijd zoals

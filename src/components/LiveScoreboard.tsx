@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Game } from '../types';
-import { formatMinute, getQuarterMinute } from '../utils/matchTime';
+import { formatMinuteLong, getQuarterMinute } from '../utils/matchTime';
 
 interface Props {
   game: Game;
@@ -45,13 +45,6 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
           {isLive ? '● Live' : 'Laatste wedstrijd'}
         </span>
 
-        {/* Huidig kwart + minuut (alleen tijdens een live wedstrijd) */}
-        {isLive && game.currentQuarter && (
-          <span className="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest bg-white/10 text-white">
-            Kwart {game.currentQuarter}{currentMinute != null ? ` - ${formatMinute(currentMinute)}` : ''}
-          </span>
-        )}
-
         {/* Resultaat Badge (Alleen bij afgeronde wedstrijd) */}
         {!isLive && (
           <div className={`text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest ${
@@ -75,7 +68,21 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
           <p className="text-5xl font-black tabular-nums">{leftScore}</p>
         </div>
         
-        <div className="text-2xl font-black opacity-20 px-4">-</div>
+        {/* Huidig kwart + minuut centraal tussen de scores (alleen tijdens een live wedstrijd) */}
+        {isLive && game.currentQuarter ? (
+          <div className="flex flex-col items-center px-2 shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+              Kwart {game.currentQuarter}
+            </span>
+            {currentMinute != null && (
+              <span className="mt-1 text-lg font-black tabular-nums whitespace-nowrap bg-white/10 px-3 py-0.5 rounded-full">
+                {formatMinuteLong(currentMinute)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="text-2xl font-black opacity-20 px-4">-</div>
+        )}
 
         {/* Rechter Team */}
         <div className="text-center flex-1">
