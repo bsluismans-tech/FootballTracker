@@ -73,9 +73,32 @@ export interface TeamInsight {
   avgSaves: number;
 }
 
+// Twee spelers die samen op het veld stonden, met het doelsaldo tijdens die minuten.
+export interface DuoInsight {
+  playerIds: [number, number];
+  minutes: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+// Impact-groep van een speler (zie computeImpact): enkel 'positive'/'negative' als dat signaal
+// stabiel is, anders 'unclear'. estimate dient enkel om binnen een groep te sorteren.
+export type ImpactGroup = 'positive' | 'unclear' | 'negative';
+export interface PlayerImpact {
+  playerId: number;
+  group: ImpactGroup;
+  estimate: number;
+  // Voor de uitleg aan trainers: doelpunten vóór/tegen met de speler op het veld versus op de
+  // bank, enkel in wedstrijden waarop hij aanwezig was (en enkel doelpunten mét minuut).
+  onField: { minutes: number; goalsFor: number; goalsAgainst: number };
+  onBench: { minutes: number; goalsFor: number; goalsAgainst: number };
+}
+
 export interface InsightsData {
   team: TeamInsight;
   players: PlayerInsight[];
+  duos: DuoInsight[];
+  impact: PlayerImpact[];
 }
 
 // Alle seizoenen die in de data voorkomen, meest recente eerst.
@@ -172,9 +195,112 @@ function playersInGroupsAt(
       .map(([, id]) => id);
   if (segments.length === 0) return new Set();
   if (minute == null) return new Set(segments.flatMap(inGroups));
+  return new Set(inGroups(segmentAt(segments, minute)));
+}
+
+// Het segment waarin een minuut valt; buiten het kwart (bv. blessuretijd) het dichtstbijzijnde.
+function segmentAt(segments: QuarterSegment[], minute: number): QuarterSegment {
   const clamped = Math.min(Math.max(minute, segments[0].start), segments[segments.length - 1].end);
-  const segment = segments.find(seg => clamped >= seg.start && clamped <= seg.end) ?? segments[segments.length - 1];
-  return new Set(inGroups(segment));
+  return segments.find(seg => clamped >= seg.start && clamped <= seg.end) ?? segments[segments.length - 1];
+}
+
+// Eén "stint": een stuk van een kwart zonder wissels — wie er op het veld stond, hoe lang, en
+// welke doelpunten (mét geregistreerde minuut) er in die tijd vielen.
+interface Stint {
+  playerIds: number[];
+  gameIndex: number;
+  minutes: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+// Sterkte van de shrinkage: hoe hoger, hoe voorzichtiger de schatting (dichter bij 0) — vooral
+// belangrijk voor spelers met weinig minuten. In minuten uitgedrukt: ~een volledige wedstrijd.
+const IMPACT_RIDGE_LAMBDA = 500;
+
+// Lost (A)x = b op via Gauss-eliminatie met pivotering. A is klein (spelers + wedstrijden).
+function solveLinearSystem(A: number[][], b: number[]): number[] {
+  const n = b.length;
+  const m = A.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let pivot = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(m[r][c]) > Math.abs(m[pivot][c])) pivot = r;
+    [m[c], m[pivot]] = [m[pivot], m[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c || m[c][c] === 0) continue;
+      const factor = m[r][c] / m[c][c];
+      for (let k = c; k <= n; k++) m[r][k] -= factor * m[c][k];
+    }
+  }
+  return m.map((row, i) => (row[i] !== 0 ? row[n] / row[i] : 0));
+}
+
+// Geschatte bijdrage per speler aan het doelsaldo (per 60 min), voor alle spelers tegelijk
+// (ridge-regressie, "adjusted plus-minus"): zo wordt het effect van medespelers en van de
+// sterkte van de tegenstander (één vrije term per wedstrijd) eruit gefilterd, i.p.v. alles
+// wat gebeurde terwijl een speler op het veld stond op zijn rekening te schrijven.
+function estimatePlayerContributions(stints: Stint[], playerIds: number[], gameCount: number): number[] {
+  const index = new Map(playerIds.map((id, i) => [id, i]));
+  const size = playerIds.length + gameCount;
+  const A = Array.from({ length: size }, () => new Array<number>(size).fill(0));
+  const b = new Array<number>(size).fill(0);
+  stints.forEach(stint => {
+    // Gewogen kleinste kwadraten met doelsaldo/60 als uitkomst en minuten als gewicht.
+    const cols = [
+      ...stint.playerIds.map(id => index.get(id)).filter((i): i is number => i != null),
+      playerIds.length + stint.gameIndex,
+    ];
+    const target = (stint.goalsFor - stint.goalsAgainst) * 60;
+    cols.forEach(i => {
+      b[i] += target;
+      cols.forEach(j => { A[i][j] += stint.minutes; });
+    });
+  });
+  for (let i = 0; i < size; i++) A[i][i] += i < playerIds.length ? IMPACT_RIDGE_LAMBDA : 1e-6;
+  return solveLinearSystem(A, b).slice(0, playerIds.length);
+}
+
+// Deelt spelers in drie groepen in. We laten telkens één wedstrijd weg en rekenen opnieuw: een
+// speler is pas 'positive'/'negative' als zijn schatting in minstens IMPACT_MIN_AGREEMENT van
+// die runs hetzelfde teken heeft als de volledige schatting. Zo hangt een oordeel niet af van
+// één toevallige wedstrijd, maar mag een sterkhouder die vooral in grote wedstrijden het
+// verschil maakt (en dus één keer "omdraait") wel groen worden. Te weinig wedstrijden:
+// iedereen 'unclear'.
+// Ook met weinig speelminuten blijft een schatting vaak stabiel van teken (de shrinkage trekt ze
+// naar 0, niet erover), terwijl ze op een paar toevallige stukken rust. Daarom pas een oordeel
+// vanaf IMPACT_MIN_MINUTES (~3 volledige wedstrijden).
+export const IMPACT_MIN_GAMES = 3;
+export const IMPACT_MIN_MINUTES = 180;
+const IMPACT_MIN_AGREEMENT = 0.8;
+function computeImpact(
+  stints: Stint[],
+  playerIds: number[],
+  gameCount: number,
+  presentByGame: Set<number>[]
+): PlayerImpact[] {
+  const full = estimatePlayerContributions(stints, playerIds, gameCount);
+  const leaveOneOut = Array.from({ length: gameCount }, (_, g) =>
+    estimatePlayerContributions(stints.filter(s => s.gameIndex !== g), playerIds, gameCount)
+  );
+  return playerIds.map((playerId, i) => {
+    const onField = { minutes: 0, goalsFor: 0, goalsAgainst: 0 };
+    const onBench = { minutes: 0, goalsFor: 0, goalsAgainst: 0 };
+    stints.forEach(stint => {
+      if (!presentByGame[stint.gameIndex].has(playerId)) return;
+      const target = stint.playerIds.includes(playerId) ? onField : onBench;
+      target.minutes += stint.minutes;
+      target.goalsFor += stint.goalsFor;
+      target.goalsAgainst += stint.goalsAgainst;
+    });
+    const sign = Math.sign(full[i]);
+    const agreement = leaveOneOut.filter(e => Math.sign(e[i]) === sign).length / Math.max(1, gameCount);
+    const group: ImpactGroup =
+      gameCount < IMPACT_MIN_GAMES || onField.minutes < IMPACT_MIN_MINUTES || sign === 0 || agreement < IMPACT_MIN_AGREEMENT
+        ? 'unclear'
+        : sign > 0 ? 'positive'
+        : 'negative';
+    return { playerId, group, estimate: full[i], onField, onBench };
+  });
 }
 
 // Reconstrueert, voor één kwart, hoeveel minuten elke speler op welke positie(groep) heeft
@@ -228,6 +354,7 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
   const quartersInGoalOrDefenseByPlayer: Record<number, number> = {};
   const goalsAgainstInGoalOrDefenseByPlayer: Record<number, number> = {};
   const teamGoalsInAttackByPlayer: Record<number, number> = {};
+  const stints: Stint[] = [];
   const minutesTotalByPlayer: Record<number, number> = {};
   const minutesByGroupByPlayer: Record<number, Record<PositionGroup, number>> = {};
   const minutesByPositionByPlayer: Record<number, Partial<Record<FieldPosition, number>>> = {};
@@ -237,7 +364,7 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
   const goalsAgainstByType: Record<string, number> = {};
   let totalGoalsFor = 0, totalGoalsAgainst = 0, totalAssists = 0, totalTackles = 0, totalSaves = 0;
 
-  scopedGames.forEach(game => {
+  scopedGames.forEach((game, gameIndex) => {
     game.playersPresent.forEach(pid => {
       matchesPresentByPlayer[pid] = (matchesPresentByPlayer[pid] || 0) + 1;
     });
@@ -317,6 +444,22 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
         });
       });
 
+      // Stints voor impact + duo's. Doelpunten zonder minuut (oude data) slaan we over: dan
+      // weten we niet wie er op dat moment op het veld stond.
+      const quarterStints: Stint[] = segments.map(seg => ({
+        playerIds: Object.values(seg.lineup).filter((id): id is number => id != null),
+        gameIndex,
+        minutes: seg.end - seg.start + 1,
+        goalsFor: 0,
+        goalsAgainst: 0,
+      }));
+      const stintAt = (minute: number) => quarterStints[segments.indexOf(segmentAt(segments, minute))];
+      if (segments.length > 0) {
+        quarter.goalEvents.forEach(e => { if (e.minute != null) stintAt(e.minute).goalsFor += 1; });
+        (quarter.opponentGoalEvents || []).forEach(e => { if (e.minute != null) stintAt(e.minute).goalsAgainst += 1; });
+      }
+      stints.push(...quarterStints);
+
       if ((quarter.opponentGoalEvents || []).length === 0) {
         playersInGoalOrDefense.forEach(id => {
           cleanSheetsByPlayer[id] = (cleanSheetsByPlayer[id] || 0) + 1;
@@ -376,5 +519,22 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
     };
   });
 
-  return { team, players: playerInsights };
+  // Duo's: alle paren die samen in een stint stonden, met minuten en doelsaldo samen.
+  const duos: Record<string, DuoInsight> = {};
+  stints.forEach(stint => {
+    const ids = [...stint.playerIds].sort((a, b) => a - b);
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => {
+      const duo = (duos[`${a}-${b}`] ??= { playerIds: [a, b], minutes: 0, goalsFor: 0, goalsAgainst: 0 });
+      duo.minutes += stint.minutes;
+      duo.goalsFor += stint.goalsFor;
+      duo.goalsAgainst += stint.goalsAgainst;
+    }));
+  });
+
+  // Impact enkel voor spelers die effectief speelden.
+  const playedIds = playerInsights.filter(p => p.minutesTotal > 0).map(p => p.id);
+  const presentByGame = scopedGames.map(g => new Set(g.playersPresent));
+  const impact = computeImpact(stints, playedIds, totalGames, presentByGame);
+
+  return { team, players: playerInsights, duos: Object.values(duos), impact };
 };

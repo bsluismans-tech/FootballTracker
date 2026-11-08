@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Target, Shield, Clock, Users, Bandage } from 'lucide-react';
+import { BarChart3, Target, Shield, Clock, Users, Bandage, TrendingUp } from 'lucide-react';
 import type { Game, Player, FieldPosition } from '../types';
-import { computeInsights, getAvailableSeasons } from '../utils/insights';
+import { computeInsights, getAvailableSeasons, IMPACT_MIN_GAMES, IMPACT_MIN_MINUTES } from '../utils/insights';
+import type { ImpactGroup, PlayerImpact } from '../utils/insights';
 import { getSeasonId } from '../utils/season';
 
 // Visuele opstelling (dubbele ruit), zelfde indeling als QuarterLineup.tsx: aanval bovenaan,
@@ -87,6 +88,7 @@ interface StatRow {
   name: string;
   primary: string; // prominent in de badge (bv. "elke 23 min")
   detail: string; // minder prominent ernaast (bv. "12 goals")
+  badgeClassName?: string; // overschrijft de kleur van het tabblad (bv. rood bij negatief)
 }
 
 interface StatTab {
@@ -95,6 +97,7 @@ interface StatTab {
   badgeClassName: string;
   rows: StatRow[];
   description?: string; // korte uitleg voor trainers, subtiel onder de tabjes
+  content?: React.ReactNode; // eigen weergave i.p.v. een ranglijst (rows wordt dan genegeerd)
 }
 
 // Rangschikt op "om de hoeveel minuten" i.p.v. op het totaal — eerlijker voor spelers met minder
@@ -146,7 +149,7 @@ const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: Sta
       {activeTab.description && (
         <p className="text-[11px] leading-snug text-gray-400 -mt-2 mb-4">{activeTab.description}</p>
       )}
-      {activeTab.rows.length === 0 ? (
+      {activeTab.content ?? (activeTab.rows.length === 0 ? (
         <p className="text-gray-400 italic text-sm">Geen data</p>
       ) : (
         <div className="space-y-2.5">
@@ -155,18 +158,156 @@ const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: Sta
               <span className="font-semibold text-gray-700 truncate">{index + 1}. {row.name}</span>
               <span className="flex items-center gap-2 shrink-0">
                 <span className="text-[11px] text-gray-400 whitespace-nowrap">{row.detail}</span>
-                <span className={`text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${activeTab.badgeClassName}`}>
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${
+                    row.badgeClassName ?? activeTab.badgeClassName
+                  }`}
+                >
                   {row.primary}
                 </span>
               </span>
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 };
 
+
+// Duo's tellen pas mee vanaf DUO_MIN_MINUTES samen op het veld.
+const DUO_MIN_MINUTES = 120;
+const DUOS_SHOWN = 3;
+
+// Doelsaldo per 60 minuten, met teken (bv. "+2.9").
+const goalDiffPer60 = (goalsFor: number, goalsAgainst: number, minutes: number): number =>
+  minutes > 0 ? ((goalsFor - goalsAgainst) / minutes) * 60 : 0;
+const formatSigned = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(1)}`;
+
+// Impact in drie groepen i.p.v. getallen: trainers zien meteen wie de ploeg vooruit helpt,
+// zonder een berekening te moeten interpreteren. Binnen een groep: sterkste schatting eerst.
+const IMPACT_GROUPS: { group: ImpactGroup; label: string; dotClassName: string; chipClassName: string; tip?: string }[] = [
+  { group: 'positive', label: 'Helpt de ploeg vooruit', dotClassName: 'bg-emerald-500', chipClassName: 'bg-emerald-50 text-emerald-700' },
+  { group: 'unclear', label: 'Nog geen duidelijk beeld', dotClassName: 'bg-gray-300', chipClassName: 'bg-gray-100 text-gray-600' },
+  {
+    group: 'negative',
+    label: 'Ploeg draait minder vlot',
+    dotClassName: 'bg-orange-400',
+    chipClassName: 'bg-orange-50 text-orange-700',
+    tip: "Tip: kijk bij Zwakste duo's met wie ze samen spelen, en spreid ze over de opstelling.",
+  },
+];
+
+// Uitleg per speler in gewone taal, opgebouwd uit dezelfde data: scoort de ploeg meer/minder
+// en krijgt ze meer/minder tegendoelpunten met de speler op het veld dan wanneer hij op de bank
+// zit (in dezelfde wedstrijden)? Bewust zonder cijfers: verschillen (per uur) kleiner dan
+// IMPACT_NOTABLE_DIFF heten "ongeveer even", vanaf IMPACT_LARGE_DIFF "veel meer/minder". Met
+// weinig bankminuten is die vergelijking zinloos en zeggen we dat ook.
+const IMPACT_NOTABLE_DIFF = 0.5;
+const IMPACT_LARGE_DIFF = 1.5;
+const IMPACT_MIN_BENCH_MINUTES = 45;
+// "veel" onderstreept, zodat grote verschillen er meteen uitspringen.
+const moreOrLess = (diff: number): React.ReactNode => (
+  <>
+    {Math.abs(diff) >= IMPACT_LARGE_DIFF && <><u>veel</u> </>}
+    {diff > 0 ? 'meer' : 'minder'}
+  </>
+);
+
+const explainImpact = (name: string, i: PlayerImpact): React.ReactNode => {
+  const { onField, onBench } = i;
+  if (onField.minutes < IMPACT_MIN_MINUTES) {
+    return `${name} speelde nog maar ${onField.minutes} minuten, te weinig om iets te zeggen.`;
+  }
+  const sentences: React.ReactNode[] = [];
+  if (onBench.minutes < IMPACT_MIN_BENCH_MINUTES || onField.minutes === 0) {
+    sentences.push(
+      `${name} zit zelden op de bank, dus er is weinig om mee te vergelijken. De inschatting steunt vooral op de combinaties waarin ${name} speelde.`
+    );
+  } else {
+    const per60 = (count: number, minutes: number) => (count / minutes) * 60;
+    const diffFor = per60(onField.goalsFor, onField.minutes) - per60(onBench.goalsFor, onBench.minutes);
+    const diffAgainst = per60(onField.goalsAgainst, onField.minutes) - per60(onBench.goalsAgainst, onBench.minutes);
+    sentences.push(
+      Math.abs(diffFor) >= IMPACT_NOTABLE_DIFF
+        ? <>Met {name} op het veld scoort de ploeg {moreOrLess(diffFor)}.</>
+        : `De ploeg scoort ongeveer even vaak met of zonder ${name}.`
+    );
+    sentences.push(
+      Math.abs(diffAgainst) >= IMPACT_NOTABLE_DIFF
+        ? <>Er vallen {moreOrLess(diffAgainst)} tegendoelpunten.</>
+        : 'Er vallen ongeveer evenveel tegendoelpunten.'
+    );
+
+    // Oranje door minder scoren, niet door slechter verdedigen: expliciet zeggen, zodat een
+    // verdediger niet onterecht als "zwakke verdediger" gelezen wordt.
+    if (i.group === 'negative' && diffAgainst < IMPACT_NOTABLE_DIFF && diffFor <= -IMPACT_NOTABLE_DIFF) {
+      sentences.push('Verdedigend maakt het dus geen verschil: het verschil zit in het scoren.');
+    }
+    // De ruwe vergelijking kan een ander beeld geven dan de groep, omdat de groep ook rekening
+    // houdt met medespelers en tegenstanders — dan leggen we uit waarom.
+    const rawNet = diffFor - diffAgainst;
+    if ((i.group === 'positive' && rawNet < 0) || (i.group === 'negative' && rawNet > 0)) {
+      sentences.push(
+        `Rekening houdend met wie er naast ${name} speelde en tegen wie, blijft de bijdrage toch ${i.group === 'positive' ? 'positief' : 'negatief'}.`
+      );
+    }
+  }
+  if (i.group === 'unclear') sentences.push('Het beeld verschilt sterk van wedstrijd tot wedstrijd.');
+  return sentences.map((sentence, index) => (
+    <React.Fragment key={index}>
+      {index > 0 && ' '}
+      {sentence}
+    </React.Fragment>
+  ));
+};
+
+const ImpactGroups: React.FC<{ impact: PlayerImpact[]; playerNameById: Map<number, string>; totalGames: number }> = ({
+  impact,
+  playerNameById,
+  totalGames,
+}) => {
+  if (impact.length === 0) return <p className="text-gray-400 italic text-sm">Geen data</p>;
+  if (totalGames < IMPACT_MIN_GAMES) {
+    return (
+      <p className="text-gray-400 italic text-sm">
+        Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {IMPACT_GROUPS.map(({ group, label, dotClassName, chipClassName, tip }) => {
+        const members = impact
+          .filter(i => i.group === group && playerNameById.has(i.playerId))
+          .sort((a, b) => b.estimate - a.estimate);
+        if (members.length === 0) return null;
+        return (
+          <div key={group}>
+            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-700">
+              <span className={`w-2.5 h-2.5 rounded-full ${dotClassName}`} /> {label}
+            </div>
+            <div className="space-y-2.5">
+              {members.map(m => {
+                const name = playerNameById.get(m.playerId)!;
+                return (
+                  <div key={m.playerId}>
+                    <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-lg ${chipClassName}`}>{name}</span>
+                    <p className="text-[11px] leading-snug text-gray-500 mt-1">{explainImpact(name, m)}</p>
+                  </div>
+                );
+              })}
+            </div>
+            {tip && <p className="text-[11px] leading-snug text-gray-400 mt-1.5">{tip}</p>}
+          </div>
+        );
+      })}
+      <p className="text-[11px] leading-snug text-gray-400 border-t border-gray-100 pt-3">
+        Op basis van {totalGames} wedstrijden. Hoe meer wedstrijden, hoe minder spelers in "nog geen duidelijk beeld".
+      </p>
+    </div>
+  );
+};
 
 // Kleurschaal voor de positie-heatmap: van heel lichtblauw (0%) via helder blauw naar het
 // donkere navy van de app (100%). Meerdere tussenstappen i.p.v. enkel doorzichtigheid, zodat
@@ -202,7 +343,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
   const [seasonFilter, setSeasonFilter] = useState<string>(() => getSeasonId());
 
   const data = useMemo(() => computeInsights(games, players, seasonFilter), [games, players, seasonFilter]);
-  const { team, players: playerInsights } = data;
+  const { team, players: playerInsights, duos, impact } = data;
 
   const goalRows = rankByMinutesPer(
     playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals, minutes: p.minutesTotal })),
@@ -240,6 +381,24 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
     playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals + p.assists, minutes: p.minutesTotal })),
     'goals + assists'
   );
+
+
+  // Duo's: doelsaldo per 60 min wanneer twee spelers samen op het veld staan.
+  const playerNameById = new Map(players.map(p => [p.id, p.name]));
+  const rankedDuos = duos
+    .filter(d => d.minutes >= DUO_MIN_MINUTES && d.playerIds.every(id => playerNameById.has(id)))
+    .map(d => ({ ...d, diff: goalDiffPer60(d.goalsFor, d.goalsAgainst, d.minutes) }))
+    .sort((a, b) => b.diff - a.diff || b.minutes - a.minutes);
+  const toDuoRow = (d: (typeof rankedDuos)[number], index: number): StatRow => ({
+    id: index,
+    name: d.playerIds.map(id => playerNameById.get(id)).join(' + '),
+    primary: formatSigned(d.diff),
+    detail: `${d.goalsFor}-${d.goalsAgainst} in ${d.minutes}min`,
+    badgeClassName: d.diff < 0 ? 'bg-red-50 text-red-700' : undefined,
+  });
+  const strongestDuoRows = rankedDuos.slice(0, DUOS_SHOWN).map(toDuoRow);
+  // Zwakste duo's: van onder naar boven, zonder overlap met de sterkste.
+  const weakestDuoRows = rankedDuos.slice(DUOS_SHOWN).reverse().slice(0, DUOS_SHOWN).map(toDuoRow);
 
   // Clean sheets als % van de kwarten in doel/verdediging — eerlijker dan het totaal, dat vooral
   // beloont wie vaak achterin stond. Bij gelijk percentage wint het hoogste aantal clean sheets.
@@ -399,6 +558,37 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
               </div>
             </div>
           </div>
+
+          {/* --- IMPACT OP DE PLOEG --- */}
+          <StatTabsCard
+            title="Impact op de ploeg"
+            icon={<TrendingUp size={18} className="text-violet-500" />}
+            tabs={[
+              {
+                key: 'impact',
+                label: 'Impact',
+                badgeClassName: 'bg-violet-50 text-violet-700',
+                rows: [],
+                content: <ImpactGroups impact={impact} playerNameById={playerNameById} totalGames={team.totalGames} />,
+                description:
+                  'Hoe doet de ploeg het als deze speler op het veld staat? Er wordt rekening gehouden met wie er naast hem speelde en met de sterkte van de tegenstander. Een speler komt pas in groen of oranje als het beeld duidelijk is.',
+              },
+              {
+                key: 'strongestDuos',
+                label: "Sterkste duo's",
+                badgeClassName: 'bg-violet-50 text-violet-700',
+                rows: strongestDuoRows,
+                description: `Het doelsaldo per 60 minuten wanneer deze twee spelers samen op het veld staan. Hoe hoger, hoe beter. Enkel duo's met minstens ${DUO_MIN_MINUTES} minuten samen.`,
+              },
+              {
+                key: 'weakestDuos',
+                label: "Zwakste duo's",
+                badgeClassName: 'bg-violet-50 text-violet-700',
+                rows: weakestDuoRows,
+                description: `Duo's waarbij de ploeg het minst goed doet als ze samen op het veld staan. Vaak een teken om ze over de opstelling te spreiden. Enkel duo's met minstens ${DUO_MIN_MINUTES} minuten samen.`,
+              },
+            ]}
+          />
 
           {/* --- PER SPELER, PER STATISTIEK --- */}
           <StatTabsCard
@@ -626,14 +816,6 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
             icon={<Target size={18} className="text-yellow-500" />}
             tabs={[
               {
-                key: 'teamGoalsInAttack',
-                label: 'Ploeg scoort',
-                badgeClassName: 'bg-yellow-50 text-yellow-700',
-                rows: teamGoalsInAttackRows,
-                description:
-                  'Om de hoeveel minuten de ploeg gemiddeld scoort terwijl deze speler in de aanval staat. Hoe lager, hoe beter.',
-              },
-              {
                 key: 'involvement',
                 label: 'Betrokkenheid',
                 badgeClassName: 'bg-yellow-50 text-yellow-700',
@@ -641,8 +823,17 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                 description:
                   'Om de hoeveel minuten deze speler zelf een doelpunt maakt of een assist geeft, over al zijn speelminuten (op elke positie). Hoe minder minuten, hoe beter.',
               },
+              {
+                key: 'teamGoalsInAttack',
+                label: 'Ploeg scoort',
+                badgeClassName: 'bg-yellow-50 text-yellow-700',
+                rows: teamGoalsInAttackRows,
+                description:
+                  'Om de hoeveel minuten de ploeg gemiddeld scoort terwijl deze speler in de aanval staat. Hoe lager, hoe beter.',
+              },
             ]}
           />
+
           <Leaderboard title="Blessures" icon={<Bandage size={18} className="text-orange-500" />} entries={injuryEntries} unit="keer" badgeClassName="bg-orange-50 text-orange-700" />
         </>
       )}
