@@ -48,6 +48,11 @@ export interface PlayerInsight {
   matchesPresent: number;
   presencePercentage: number; // 0-100, t.o.v. het aantal wedstrijden binnen de huidige filter
   cleanSheets: number;
+  quartersInGoalOrDefense: number; // noemer voor het clean-sheet-percentage
+  minutesInGoalOrDefense: number;
+  goalsAgainstInGoalOrDefense: number; // tegendoelpunten terwijl de speler keeper/verdediger was
+  minutesInAttack: number;
+  teamGoalsInAttack: number; // doelpunten van de ploeg terwijl de speler in de aanval stond
   injuries: number;
 }
 
@@ -152,6 +157,26 @@ function computeQuarterSegments(quarter: Quarter): QuarterSegment[] {
   return segments;
 }
 
+// Wie stond er op een bepaalde minuut van het kwart in één van de gegeven positiegroepen? Valt
+// de minuut buiten het kwart (bv. blessuretijd), dan nemen we het dichtstbijzijnde segment.
+// Zonder minuut (oude data) geven we iedereen die het kwart ooit in die groepen stond terug —
+// preciezer kan niet.
+function playersInGroupsAt(
+  segments: QuarterSegment[],
+  minute: number | undefined,
+  groups: PositionGroup[]
+): Set<number> {
+  const inGroups = (seg: QuarterSegment) =>
+    (Object.entries(seg.lineup) as [FieldPosition, number][])
+      .filter(([pos, id]) => id != null && groups.includes(POSITION_TO_GROUP[pos]))
+      .map(([, id]) => id);
+  if (segments.length === 0) return new Set();
+  if (minute == null) return new Set(segments.flatMap(inGroups));
+  const clamped = Math.min(Math.max(minute, segments[0].start), segments[segments.length - 1].end);
+  const segment = segments.find(seg => clamped >= seg.start && clamped <= seg.end) ?? segments[segments.length - 1];
+  return new Set(inGroups(segment));
+}
+
 // Reconstrueert, voor één kwart, hoeveel minuten elke speler op welke positie(groep) heeft
 // gestaan — gebaseerd op de segmenten hierboven.
 function reconstructQuarterMinutes(quarter: Quarter): {
@@ -200,6 +225,9 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
   const savesByPlayer: Record<number, number> = {};
   const injuriesByPlayer: Record<number, number> = {};
   const cleanSheetsByPlayer: Record<number, number> = {};
+  const quartersInGoalOrDefenseByPlayer: Record<number, number> = {};
+  const goalsAgainstInGoalOrDefenseByPlayer: Record<number, number> = {};
+  const teamGoalsInAttackByPlayer: Record<number, number> = {};
   const minutesTotalByPlayer: Record<number, number> = {};
   const minutesByGroupByPlayer: Record<number, Record<PositionGroup, number>> = {};
   const minutesByPositionByPlayer: Record<number, Partial<Record<FieldPosition, number>>> = {};
@@ -267,7 +295,28 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
       });
 
       // Clean sheet: geen enkel tegendoelpunt dit kwart, en credit voor elke speler die op enig
-      // moment in het kwart als keeper of verdediger op het veld stond.
+      // moment in het kwart als keeper of verdediger op het veld stond. Het aantal kwarten in
+      // doel/verdediging houden we ook bij, zodat we een percentage kunnen tonen.
+      playersInGoalOrDefense.forEach(id => {
+        quartersInGoalOrDefenseByPlayer[id] = (quartersInGoalOrDefenseByPlayer[id] || 0) + 1;
+      });
+      // Tegendoelpunten toewijzen aan wie op dat moment keeper/verdediger was, via het
+      // segment (tussen wissels) waarin de goalminuut valt.
+      const segments = computeQuarterSegments(quarter);
+      (quarter.opponentGoalEvents || []).forEach(e => {
+        playersInGroupsAt(segments, e.minute, ['keeper', 'verdediging']).forEach(id => {
+          goalsAgainstInGoalOrDefenseByPlayer[id] = (goalsAgainstInGoalOrDefenseByPlayer[id] || 0) + 1;
+        });
+      });
+
+      // Aanval, het spiegelbeeld van hierboven: doelpunten van de ploeg toewijzen aan wie op dat
+      // moment in de aanval stond.
+      quarter.goalEvents.forEach(e => {
+        playersInGroupsAt(segments, e.minute, ['aanval']).forEach(id => {
+          teamGoalsInAttackByPlayer[id] = (teamGoalsInAttackByPlayer[id] || 0) + 1;
+        });
+      });
+
       if ((quarter.opponentGoalEvents || []).length === 0) {
         playersInGoalOrDefense.forEach(id => {
           cleanSheetsByPlayer[id] = (cleanSheetsByPlayer[id] || 0) + 1;
@@ -318,6 +367,11 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
       matchesPresent,
       presencePercentage: totalGames > 0 ? Math.round((matchesPresent / totalGames) * 100) : 0,
       cleanSheets: cleanSheetsByPlayer[p.id] || 0,
+      quartersInGoalOrDefense: quartersInGoalOrDefenseByPlayer[p.id] || 0,
+      minutesInGoalOrDefense: (minutesByGroupByPlayer[p.id]?.keeper || 0) + (minutesByGroupByPlayer[p.id]?.verdediging || 0),
+      goalsAgainstInGoalOrDefense: goalsAgainstInGoalOrDefenseByPlayer[p.id] || 0,
+      minutesInAttack: minutesByGroupByPlayer[p.id]?.aanval || 0,
+      teamGoalsInAttack: teamGoalsInAttackByPlayer[p.id] || 0,
       injuries: injuriesByPlayer[p.id] || 0,
     };
   });

@@ -81,17 +81,53 @@ const Leaderboard: React.FC<{
   );
 };
 
-// Kaart met meerdere statistieken (Doelpunten/Assists/Tackles/Reddingen) achter tabjes i.p.v.
-// aparte kaarten onder elkaar — compacter, en makkelijker om snel tussen statistieken te wisselen.
-const StatTabsCard: React.FC<{
-  tabs: { key: string; label: string; unit: string; badgeClassName: string; entries: LeaderboardEntry[] }[];
-}> = ({ tabs }) => {
+// Eén rij in een StatTabsCard: de ranking gebeurt vooraf, de kaart toont enkel.
+interface StatRow {
+  id: number;
+  name: string;
+  primary: string; // prominent in de badge (bv. "elke 23 min")
+  detail: string; // minder prominent ernaast (bv. "12 goals")
+}
+
+interface StatTab {
+  key: string;
+  label: string;
+  badgeClassName: string;
+  rows: StatRow[];
+  description?: string; // korte uitleg voor trainers, subtiel onder de tabjes
+}
+
+// Rangschikt op "om de hoeveel minuten" i.p.v. op het totaal — eerlijker voor spelers met minder
+// speeltijd. Laagste = beste; bij gelijkstand wint het hoogste totaal. Spelers zonder
+// geregistreerde minuten (oude data) komen onderaan zonder ratio.
+const rankByMinutesPer = (
+  entries: { id: number; name: string; value: number; minutes: number }[],
+  unit: string
+): StatRow[] =>
+  entries
+    .filter(e => e.value > 0)
+    .map(e => ({ ...e, minutesPer: e.minutes > 0 ? e.minutes / e.value : Infinity }))
+    .sort((a, b) => a.minutesPer - b.minutesPer || b.value - a.value)
+    .map(e => ({
+      id: e.id,
+      name: e.name,
+      primary: Number.isFinite(e.minutesPer) ? `elke ${Math.round(e.minutesPer)} min` : '–',
+      detail: `${e.value} ${unit}`,
+    }));
+
+// Kaart met meerdere statistieken achter tabjes i.p.v. aparte kaarten onder elkaar — compacter,
+// en makkelijker om snel tussen statistieken te wisselen.
+const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: StatTab[] }> = ({ title, icon, tabs }) => {
   const [activeKey, setActiveKey] = useState(tabs[0].key);
   const activeTab = tabs.find(t => t.key === activeKey) ?? tabs[0];
-  const sorted = [...activeTab.entries].filter(e => e.value > 0).sort((a, b) => b.value - a.value);
 
   return (
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+      {title && (
+        <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+          {icon} {title}
+        </div>
+      )}
       <div className="overflow-x-auto -mx-1 px-1 mb-4">
         <div className="flex gap-1.5 min-w-min">
           {tabs.map(tab => (
@@ -107,15 +143,21 @@ const StatTabsCard: React.FC<{
           ))}
         </div>
       </div>
-      {sorted.length === 0 ? (
+      {activeTab.description && (
+        <p className="text-[11px] leading-snug text-gray-400 -mt-2 mb-4">{activeTab.description}</p>
+      )}
+      {activeTab.rows.length === 0 ? (
         <p className="text-gray-400 italic text-sm">Geen data</p>
       ) : (
         <div className="space-y-2.5">
-          {sorted.map((entry, index) => (
-            <div key={entry.id} className="flex justify-between items-center text-sm gap-2">
-              <span className="font-semibold text-gray-700 truncate">{index + 1}. {entry.name}</span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg shrink-0 whitespace-nowrap ${activeTab.badgeClassName}`}>
-                {entry.value} {activeTab.unit}
+          {activeTab.rows.map((row, index) => (
+            <div key={row.id} className="flex justify-between items-center text-sm gap-2">
+              <span className="font-semibold text-gray-700 truncate">{index + 1}. {row.name}</span>
+              <span className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] text-gray-400 whitespace-nowrap">{row.detail}</span>
+                <span className={`text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${activeTab.badgeClassName}`}>
+                  {row.primary}
+                </span>
               </span>
             </div>
           ))}
@@ -125,6 +167,24 @@ const StatTabsCard: React.FC<{
   );
 };
 
+
+// Kleurschaal voor de positie-heatmap: van heel lichtblauw (0%) via helder blauw naar het
+// donkere navy van de app (100%). Meerdere tussenstappen i.p.v. enkel doorzichtigheid, zodat
+// ook middenwaardes (bv. 28% vs 46%) duidelijk van elkaar verschillen.
+const HEATMAP_STOPS: [number, number, number][] = [
+  [239, 246, 255], // 0%   blue-50
+  [147, 197, 253], // 25%  blue-300
+  [59, 130, 246], //  50%  blue-500
+  [29, 78, 216], //   75%  blue-700
+  [4, 23, 76], //     100% navy #04174C
+];
+const heatmapColor = (pct: number): string => {
+  const scaled = (Math.min(100, Math.max(0, pct)) / 100) * (HEATMAP_STOPS.length - 1);
+  const i = Math.min(Math.floor(scaled), HEATMAP_STOPS.length - 2);
+  const t = scaled - i;
+  const [r, g, b] = HEATMAP_STOPS[i].map((c, k) => Math.round(c + (HEATMAP_STOPS[i + 1][k] - c) * t));
+  return `rgb(${r}, ${g}, ${b})`;
+};
 
 // Geen overbodige ".0" tonen bij een rond gemiddelde (bv. "4" i.p.v. "4.0").
 const formatAvg = (value: number): string => (Number.isInteger(value) ? `${value}` : value.toFixed(1));
@@ -144,21 +204,82 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
   const data = useMemo(() => computeInsights(games, players, seasonFilter), [games, players, seasonFilter]);
   const { team, players: playerInsights } = data;
 
-  const goalEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals }));
-  const assistEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.assists }));
-  const tackleEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.tackles }));
-  const saveEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.saves }));
-  const cleanSheetEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.cleanSheets }));
+  const goalRows = rankByMinutesPer(
+    playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals, minutes: p.minutesTotal })),
+    'goals'
+  );
+  const assistRows = rankByMinutesPer(
+    playerInsights.map(p => ({ id: p.id, name: p.name, value: p.assists, minutes: p.minutesTotal })),
+    'assists'
+  );
+  const tackleRows = rankByMinutesPer(
+    playerInsights.map(p => ({ id: p.id, name: p.name, value: p.tackles, minutes: p.minutesTotal })),
+    'tackles'
+  );
+  // Reddingen enkel afzetten tegen de minuten in doel — veldminuten zouden de ratio vertekenen.
+  const saveRows = rankByMinutesPer(
+    playerInsights.map(p => ({ id: p.id, name: p.name, value: p.saves, minutes: p.minutesByPosition.keeper || 0 })),
+    'reddingen'
+  );
+
+  // Aanval: om de hoeveel minuten de ploeg scoort terwijl deze speler vooraan staat. Lager =
+  // beter; wie vooraan stond zonder dat de ploeg scoorde, komt onderaan.
+  const teamGoalsInAttackRows: StatRow[] = playerInsights
+    .filter(p => p.minutesInAttack > 0)
+    .map(p => ({ ...p, minutesPer: p.teamGoalsInAttack > 0 ? p.minutesInAttack / p.teamGoalsInAttack : Infinity }))
+    .sort((a, b) => a.minutesPer - b.minutesPer || b.teamGoalsInAttack - a.teamGoalsInAttack)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      primary: Number.isFinite(p.minutesPer) ? `elke ${Math.round(p.minutesPer)} min` : 'nog geen goal',
+      detail: `${p.teamGoalsInAttack} goals in ${p.minutesInAttack}min`,
+    }));
+
+  // Betrokkenheid: doelpunt of assist van de speler zelf, over al zijn speelminuten.
+  const involvementRows = rankByMinutesPer(
+    playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals + p.assists, minutes: p.minutesTotal })),
+    'goals + assists'
+  );
+
+  // Clean sheets als % van de kwarten in doel/verdediging — eerlijker dan het totaal, dat vooral
+  // beloont wie vaak achterin stond. Bij gelijk percentage wint het hoogste aantal clean sheets.
+  const cleanSheetRows: StatRow[] = playerInsights
+    .filter(p => p.cleanSheets > 0)
+    .map(p => ({ ...p, pct: Math.round((p.cleanSheets / p.quartersInGoalOrDefense) * 100) }))
+    .sort((a, b) => b.pct - a.pct || b.cleanSheets - a.cleanSheets)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      primary: `${p.pct}% clean`,
+      detail: `${p.cleanSheets} van ${p.quartersInGoalOrDefense} kwarten`,
+    }));
+
+  // Tegendoelpunten: om de hoeveel minuten de ploeg een goal slikt terwijl deze speler keeper of
+  // verdediger is. Hoger = beter; wie nog geen enkele tegengoal kreeg staat bovenaan (bij
+  // gelijkstand: wie het langst achterin stond).
+  const goalsAgainstRows: StatRow[] = playerInsights
+    .filter(p => p.minutesInGoalOrDefense > 0)
+    .map(p => ({
+      ...p,
+      minutesPer: p.goalsAgainstInGoalOrDefense > 0 ? p.minutesInGoalOrDefense / p.goalsAgainstInGoalOrDefense : Infinity,
+    }))
+    .sort((a, b) => b.minutesPer - a.minutesPer || b.minutesInGoalOrDefense - a.minutesInGoalOrDefense)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      primary: Number.isFinite(p.minutesPer) ? `elke ${Math.round(p.minutesPer)} min` : 'geen tegengoal',
+      detail: `${p.goalsAgainstInGoalOrDefense} tegen in ${p.minutesInGoalOrDefense}min`,
+    }));
   const injuryEntries = playerInsights.map(p => ({ id: p.id, name: p.name, value: p.injuries }));
 
-  // Speelminuten + aanwezigheid gecombineerd tot één overzicht per speler, gesorteerd op
-  // speelminuten — enkel spelers die effectief aanwezig waren zijn relevant hier.
+  // Speelminuten + aanwezigheid gecombineerd tot één overzicht per speler, gesorteerd op % van
+  // de aanwezige tijd dat hij speelde (eerlijker dan totaal minuten bij wisselende aanwezigheid);
+  // bij gelijkstand wint het hoogste totaal. Enkel spelers die effectief aanwezig waren.
   const minutesAndPresence = [...playerInsights]
     .filter(p => p.matchesPresent > 0)
-    .sort((a, b) => b.minutesTotal - a.minutesTotal);
+    .sort((a, b) => b.minutesPercentage - a.minutesPercentage || b.minutesTotal - a.minutesTotal);
 
   const [minutesViewMode, setMinutesViewMode] = useState<'lijst' | 'grafiek'>('lijst');
-  const maxMinutesTotal = Math.max(1, ...minutesAndPresence.map(p => p.minutesTotal));
 
   // Voor de speler-tabs bij "Speelminuten per positie": alfabetisch, makkelijker om een
   // specifieke speler snel terug te vinden dan gesorteerd op speelminuten.
@@ -170,6 +291,10 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
   const [selectedPositionPlayerId, setSelectedPositionPlayerId] = useState<number | null>(null);
   const selectedPositionPlayer =
     playersAlphabetically.find(p => p.id === selectedPositionPlayerId) ?? playersAlphabetically[0] ?? null;
+  // Positie(s) waar de geselecteerde speler het meest stond krijgen een opvallende rand.
+  const maxPositionMinutes = selectedPositionPlayer
+    ? Math.max(0, ...Object.values(selectedPositionPlayer.minutesByPosition))
+    : 0;
 
   // Welke positie geselecteerd staat bij "Spelers per positie".
   const [selectedPositionTab, setSelectedPositionTab] = useState<FieldPosition>('keeper');
@@ -278,10 +403,10 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
           {/* --- PER SPELER, PER STATISTIEK --- */}
           <StatTabsCard
             tabs={[
-              { key: 'goals', label: 'Doelpunten', unit: 'goals', badgeClassName: 'bg-yellow-50 text-yellow-700', entries: goalEntries },
-              { key: 'assists', label: 'Assists', unit: 'assists', badgeClassName: 'bg-yellow-50 text-yellow-700', entries: assistEntries },
-              { key: 'tackles', label: 'Tackles', unit: 'tackles', badgeClassName: 'bg-blue-50 text-blue-700', entries: tackleEntries },
-              { key: 'saves', label: 'Reddingen', unit: 'reddingen', badgeClassName: 'bg-green-50 text-green-700', entries: saveEntries },
+              { key: 'goals', label: 'Doelpunten', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: goalRows },
+              { key: 'assists', label: 'Assists', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: assistRows },
+              { key: 'tackles', label: 'Tackles', badgeClassName: 'bg-blue-50 text-blue-700', rows: tackleRows },
+              { key: 'saves', label: 'Reddingen', badgeClassName: 'bg-green-50 text-green-700', rows: saveRows },
             ]}
           />
 
@@ -314,12 +439,12 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                 {minutesAndPresence.map((p, index) => (
                   <div key={p.id} className="flex justify-between items-center gap-2 text-sm">
                     <span className="font-semibold text-gray-700 truncate">{index + 1}. {p.name}</span>
-                    <div className="flex flex-wrap justify-end items-center gap-x-3 gap-y-0.5 shrink-0">
+                    <div className="flex flex-wrap justify-end items-center gap-x-2 gap-y-0.5 shrink-0">
                       <span className="text-xs font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 whitespace-nowrap">
-                        {p.minutesTotal}min ({p.minutesPercentage}%)
+                        {p.minutesPercentage}% gespeeld
                       </span>
                       <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {p.matchesPresent}/{team.totalGames} aanwezig ({p.presencePercentage}%)
+                        ({p.minutesTotal}min in {p.matchesPresent} {p.matchesPresent === 1 ? 'wedstrijd' : 'wedstrijden'})
                       </span>
                     </div>
                   </div>
@@ -333,16 +458,16 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                   {minutesAndPresence.map(p => (
                     <div key={p.id} className="flex flex-col items-center w-16 shrink-0">
                       <div className="flex flex-col items-center justify-end" style={{ height: '120px' }}>
-                        <span className="text-[10px] font-bold text-blue-700 mb-1">{p.minutesTotal}'</span>
+                        <span className="text-[10px] font-bold text-blue-700 mb-1">{p.minutesPercentage}%</span>
                         <div
                           className="w-8 bg-blue-500 rounded-t-md"
-                          style={{ height: `${Math.max(4, (p.minutesTotal / maxMinutesTotal) * 100)}px` }}
+                          style={{ height: `${Math.min(100, Math.max(4, p.minutesPercentage))}px` }}
                         />
                       </div>
                       <div className="mt-2 text-center">
                         <p className="text-[10px] font-bold text-gray-700 truncate w-16">{p.name}</p>
-                        <p className="text-[9px] text-gray-400 leading-tight">{p.minutesTotal}min ({p.minutesPercentage}%)</p>
-                        <p className="text-[9px] text-gray-400 leading-tight">{p.matchesPresent}/{team.totalGames} aanw.</p>
+                        <p className="text-[9px] text-gray-400 leading-tight">{p.minutesTotal}min</p>
+                        <p className="text-[9px] text-gray-400 leading-tight">{p.matchesPresent} wedstr.</p>
                       </div>
                     </div>
                   ))}
@@ -392,17 +517,27 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                               : pos === 'aanvaller_links' || pos === 'aanvaller_rechts'
                               ? 'translate-y-6'
                               : '';
+                          // Heatmap: hoe groter het aandeel van zijn speeltijd op deze positie, hoe
+                          // feller blauw — zo zie je in één oogopslag waar een speler vooral staat.
+                          // Vanaf een donkere tint schakelt de tekst naar wit voor leesbaarheid.
+                          const darkCell = pct >= 35;
+                          const isTopPosition = minutes > 0 && minutes === maxPositionMinutes;
                           return (
                             <div
                               key={pos}
                               className={`w-20 py-2 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 ${wingOffset} ${
-                                minutes > 0 ? 'border-[#04174C]/30 bg-white' : 'border-dashed border-gray-200 bg-white/60'
+                                isTopPosition
+                                  ? 'border-amber-400 shadow-md shadow-amber-200'
+                                  : minutes > 0
+                                  ? 'border-blue-900/10'
+                                  : 'border-dashed border-gray-200 bg-white/60'
                               }`}
+                              style={minutes > 0 ? { backgroundColor: heatmapColor(pct) } : undefined}
                             >
                               {minutes > 0 ? (
                                 <>
-                                  <span className="text-xs font-bold text-[#04174C]">{minutes}min</span>
-                                  <span className="text-[9px] text-gray-400">{pct}%</span>
+                                  <span className={`text-xs font-bold ${darkCell ? 'text-white' : 'text-[#04174C]'}`}>{minutes}min</span>
+                                  <span className={`text-[9px] ${darkCell ? 'text-blue-100' : 'text-gray-500'}`}>{pct}%</span>
                                 </>
                               ) : (
                                 <span className="text-gray-300 text-sm font-bold">—</span>
@@ -463,7 +598,51 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
             )}
           </div>
 
-          <Leaderboard title="Clean sheets" icon={<Shield size={18} className="text-emerald-500" />} entries={cleanSheetEntries} unit="clean sheets" badgeClassName="bg-emerald-50 text-emerald-700" />
+          <StatTabsCard
+            title="Verdediging"
+            icon={<Shield size={18} className="text-emerald-500" />}
+            tabs={[
+              {
+                key: 'goalsAgainst',
+                label: 'Tegendoelpunten',
+                badgeClassName: 'bg-emerald-50 text-emerald-700',
+                rows: goalsAgainstRows,
+                description:
+                  'Om de hoeveel minuten de ploeg gemiddeld een tegendoelpunt krijgt wanneer deze speler in doel of in de verdediging staat. Hoe hoger, hoe beter.',
+              },
+              {
+                key: 'cleanSheets',
+                label: 'Clean sheets',
+                badgeClassName: 'bg-emerald-50 text-emerald-700',
+                rows: cleanSheetRows,
+                description:
+                  'Hoeveel kwarten de ploeg geen tegendoelpunt kreeg wanneer de speler in doel of in de verdediging stond. Hoe hoger, hoe beter.',
+              },
+            ]}
+          />
+
+          <StatTabsCard
+            title="Aanval"
+            icon={<Target size={18} className="text-yellow-500" />}
+            tabs={[
+              {
+                key: 'teamGoalsInAttack',
+                label: 'Ploeg scoort',
+                badgeClassName: 'bg-yellow-50 text-yellow-700',
+                rows: teamGoalsInAttackRows,
+                description:
+                  'Om de hoeveel minuten de ploeg gemiddeld scoort terwijl deze speler in de aanval staat. Hoe lager, hoe beter.',
+              },
+              {
+                key: 'involvement',
+                label: 'Betrokkenheid',
+                badgeClassName: 'bg-yellow-50 text-yellow-700',
+                rows: involvementRows,
+                description:
+                  'Om de hoeveel minuten deze speler zelf een doelpunt maakt of een assist geeft, over al zijn speelminuten (op elke positie). Hoe minder minuten, hoe beter.',
+              },
+            ]}
+          />
           <Leaderboard title="Blessures" icon={<Bandage size={18} className="text-orange-500" />} entries={injuryEntries} unit="keer" badgeClassName="bg-orange-50 text-orange-700" />
         </>
       )}
