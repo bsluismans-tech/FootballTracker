@@ -112,16 +112,9 @@ const callWorker = async (prompt: string): Promise<string> => {
   return text.trim();
 };
 
-// Genereert een wedstrijdverslag via onze eigen AI-Worker. Geeft null terug bij een
-// blijvend mislukte aanroep, zodat de UI dan gewoon terugvalt op de standaard-placeholder.
-export const generateMatchReport = async (
-  game: Game,
-  players: Player[],
-  ourGoals: number,
-  opponentGoals: number
-): Promise<string | null> => {
-  const prompt = buildPrompt(game, players, ourGoals, opponentGoals);
-
+// Stuurt een prompt naar onze AI-Worker, met één nieuwe poging bij een time-out of serverfout.
+// Geeft null terug bij een blijvend mislukte aanroep, zodat de UI zelf een fallback kan tonen.
+export const askAi = async (prompt: string, logLabel: string): Promise<string | null> => {
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -132,13 +125,22 @@ export const generateMatchReport = async (
       const isRetryable = timedOut || (typeof status === 'number' && status >= 500);
 
       if (isRetryable && attempt < maxAttempts) {
-        console.warn(`AI-verslag genereren: poging ${attempt} mislukt, nieuwe poging...`, err);
+        console.warn(`${logLabel}: poging ${attempt} mislukt, nieuwe poging...`, err);
         await sleep(1500);
         continue;
       }
-      console.warn('AI-verslag genereren mislukt:', err);
+      console.warn(`${logLabel} mislukt:`, err);
       return null;
     }
   }
   return null;
 };
+
+// Genereert een wedstrijdverslag via onze eigen AI-Worker. Geeft null terug bij een
+// blijvend mislukte aanroep, zodat de UI dan gewoon terugvalt op de standaard-placeholder.
+export const generateMatchReport = async (
+  game: Game,
+  players: Player[],
+  ourGoals: number,
+  opponentGoals: number
+): Promise<string | null> => askAi(buildPrompt(game, players, ourGoals, opponentGoals), 'AI-verslag genereren');

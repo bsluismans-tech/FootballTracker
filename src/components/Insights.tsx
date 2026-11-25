@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { BarChart3, Target, Shield, Clock, Users, Bandage, TrendingUp } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { BarChart3, Target, Shield, Clock, Users, Bandage, TrendingUp, Sparkles, Loader2, Trophy, FileText } from 'lucide-react';
 import type { Game, Player, FieldPosition } from '../types';
-import { computeInsights, getAvailableSeasons, IMPACT_MIN_GAMES, IMPACT_MIN_MINUTES } from '../utils/insights';
-import type { ImpactGroup, PlayerImpact } from '../utils/insights';
+import { computeInsights, getAvailableSeasons, IMPACT_MIN_GAMES, IMPACT_MIN_MINUTES, LINEUP_MIN_MINUTES, LINEUP_MIN_GAMES } from '../utils/insights';
+import type { ImpactGroup, PlayerImpact, LineupSlot } from '../utils/insights';
 import { getSeasonId } from '../utils/season';
+import { generateTeamInsights, generatePlayerReport } from '../utils/aiTeamInsights';
+import type { TeamAiInsight } from '../utils/aiTeamInsights';
+import type { TeamInsight, InsightsData } from '../utils/insights';
 
 // Visuele opstelling (dubbele ruit), zelfde indeling als QuarterLineup.tsx: aanval bovenaan,
 // keeper onderaan — herkenbaar voor trainers die het live-invoerscherm al kennen.
@@ -186,15 +189,13 @@ const formatSigned = (value: number): string => `${value >= 0 ? '+' : ''}${value
 
 // Impact in drie groepen i.p.v. getallen: trainers zien meteen wie de ploeg vooruit helpt,
 // zonder een berekening te moeten interpreteren. Binnen een groep: sterkste schatting eerst.
-const IMPACT_GROUPS: { group: ImpactGroup; label: string; dotClassName: string; chipClassName: string; tip?: string }[] = [
-  { group: 'positive', label: 'Helpt de ploeg vooruit', dotClassName: 'bg-emerald-500', chipClassName: 'bg-emerald-50 text-emerald-700' },
-  { group: 'unclear', label: 'Nog geen duidelijk beeld', dotClassName: 'bg-gray-300', chipClassName: 'bg-gray-100 text-gray-600' },
+const IMPACT_GROUPS: { group: ImpactGroup; label: string; tip?: string }[] = [
+  { group: 'positive', label: 'Helpt de ploeg vooruit' },
+  { group: 'unclear', label: 'Nog geen duidelijk beeld' },
   {
     group: 'negative',
     label: 'Ploeg draait minder vlot',
-    dotClassName: 'bg-orange-400',
-    chipClassName: 'bg-orange-50 text-orange-700',
-    tip: "Tip: kijk bij Zwakste duo's met wie ze samen spelen, en spreid ze over de opstelling.",
+    tip: "Tip: kijk bij Duo's > Zwakste duo's met wie hij samen speelt, en spreid die spelers over de opstelling.",
   },
 ];
 
@@ -222,7 +223,7 @@ const explainImpact = (name: string, i: PlayerImpact): React.ReactNode => {
   const sentences: React.ReactNode[] = [];
   if (onBench.minutes < IMPACT_MIN_BENCH_MINUTES || onField.minutes === 0) {
     sentences.push(
-      `${name} zit zelden op de bank, dus er is weinig om mee te vergelijken. De inschatting steunt vooral op de combinaties waarin ${name} speelde.`
+      `${name} zit zelden op de bank, dus er is weinig om mee te vergelijken.`
     );
   } else {
     const per60 = (count: number, minutes: number) => (count / minutes) * 60;
@@ -262,52 +263,6 @@ const explainImpact = (name: string, i: PlayerImpact): React.ReactNode => {
   ));
 };
 
-const ImpactGroups: React.FC<{ impact: PlayerImpact[]; playerNameById: Map<number, string>; totalGames: number }> = ({
-  impact,
-  playerNameById,
-  totalGames,
-}) => {
-  if (impact.length === 0) return <p className="text-gray-400 italic text-sm">Geen data</p>;
-  if (totalGames < IMPACT_MIN_GAMES) {
-    return (
-      <p className="text-gray-400 italic text-sm">
-        Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-4">
-      {IMPACT_GROUPS.map(({ group, label, dotClassName, chipClassName, tip }) => {
-        const members = impact
-          .filter(i => i.group === group && playerNameById.has(i.playerId))
-          .sort((a, b) => b.estimate - a.estimate);
-        if (members.length === 0) return null;
-        return (
-          <div key={group}>
-            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-700">
-              <span className={`w-2.5 h-2.5 rounded-full ${dotClassName}`} /> {label}
-            </div>
-            <div className="space-y-2.5">
-              {members.map(m => {
-                const name = playerNameById.get(m.playerId)!;
-                return (
-                  <div key={m.playerId}>
-                    <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-lg ${chipClassName}`}>{name}</span>
-                    <p className="text-[11px] leading-snug text-gray-500 mt-1">{explainImpact(name, m)}</p>
-                  </div>
-                );
-              })}
-            </div>
-            {tip && <p className="text-[11px] leading-snug text-gray-400 mt-1.5">{tip}</p>}
-          </div>
-        );
-      })}
-      <p className="text-[11px] leading-snug text-gray-400 border-t border-gray-100 pt-3">
-        Op basis van {totalGames} wedstrijden. Hoe meer wedstrijden, hoe minder spelers in "nog geen duidelijk beeld".
-      </p>
-    </div>
-  );
-};
 
 // Kleurschaal voor de positie-heatmap: van heel lichtblauw (0%) via helder blauw naar het
 // donkere navy van de app (100%). Meerdere tussenstappen i.p.v. enkel doorzichtigheid, zodat
@@ -338,12 +293,344 @@ const sortWithUnknownLast = <T extends { type: string }>(items: T[]): T[] => {
   return [...known, ...unknown];
 };
 
+// AI-inzichten over de ploeg als geheel (geen individuele spelers). Enkel op aanvraag
+// gegenereerd, om het gratis AI-budget te sparen. Het resultaat wordt lokaal bewaard per seizoen
+// én per stand van de wedstrijddata: zolang er niets wijzigt, blijven de inzichten staan; na een
+// nieuwe of aangepaste wedstrijd vraagt de kaart om opnieuw te genereren.
+const AiInsightList: React.FC<{ insights: TeamAiInsight[] }> = ({ insights }) => (
+  <div className="space-y-3">
+    {insights.map((insight, index) => (
+      <div key={index} className="border-s-2 border-blue-100 ps-3">
+        {insight.title && <div className="text-sm font-bold text-[#04174C]">{insight.title}</div>}
+        <p className="text-sm leading-snug text-gray-600">{insight.text}</p>
+      </div>
+    ))}
+  </div>
+);
+
+const TeamAiInsightsCard: React.FC<{ games: Game[]; team: TeamInsight; seasonFilter: string }> = ({ games, team, seasonFilter }) => {
+  // "v3": de bewaarde vorm is weer een lijst (v2 bevatte ook spelersinzichten).
+  const dataKey = `teamAiInsights:v3:${seasonFilter}:${games.map(g => `${g.id}@${g.lastUpdate || ''}`).sort().join(',')}`;
+  const readCache = (): TeamAiInsight[] | null => {
+    try {
+      const raw = localStorage.getItem(dataKey);
+      return raw ? (JSON.parse(raw) as TeamAiInsight[]) : null;
+    } catch { return null; }
+  };
+  const [result, setResult] = useState<{ key: string; insights: TeamAiInsight[] | null }>(() => ({ key: dataKey, insights: readCache() }));
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  // Ander seizoen of nieuwe data: opnieuw uit de lokale cache lezen.
+  const insights = result.key === dataKey ? result.insights : readCache();
+
+  // Automatisch genereren bij het openen van de pagina als er voor deze data nog niets bewaard
+  // is. Per data-stand maar één automatische poging (ook bij een mislukking), zodat er geen lus
+  // van aanvragen ontstaat; daarna kan het nog altijd met de knop.
+  const autoAttempted = useRef(new Set<string>());
+  useEffect(() => {
+    if (insights || autoAttempted.current.has(dataKey)) return;
+    autoAttempted.current.add(dataKey);
+    handleGenerate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataKey]);
+
+  async function handleGenerate() {
+    setIsGenerating(true);
+    setFailed(false);
+    try {
+      const generated = await generateTeamInsights(games, team);
+      if (generated) {
+        setResult({ key: dataKey, insights: generated });
+        try { localStorage.setItem(dataKey, JSON.stringify(generated)); } catch { /* opslag niet beschikbaar */ }
+      } else {
+        setFailed(true);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+          <Sparkles size={18} className="text-blue-500" /> Hoe presteert de ploeg?
+        </div>
+        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">AI</span>
+      </div>
+      <p className="text-[11px] leading-snug text-gray-400 mb-4">
+        Patronen over de ploeg als geheel, op basis van {team.totalGames} wedstrijden. AI kan zich vergissen: lees het als denkpiste, niet als feit.
+      </p>
+      {insights && (
+        <div className="mb-4">
+          <AiInsightList insights={insights} />
+        </div>
+      )}
+      <button
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all ${
+          insights ? 'bg-gray-50 text-[#04174C]' : 'bg-[#04174C] text-white'
+        }`}
+      >
+        {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+        {isGenerating ? 'Inzichten worden gegenereerd...' : insights ? 'Opnieuw genereren' : 'Genereer ploeginzichten'}
+      </button>
+      {failed && (
+        <p className="mt-2 text-[10px] font-bold text-red-500 text-center">
+          Kon geen inzichten genereren. Probeer het straks opnieuw (zie console voor details).
+        </p>
+      )}
+    </div>
+  );
+};
+
+// Rapport per speler, met tabs om tussen spelers te wisselen. Het AI-rapport wordt per speler
+// op aanvraag gegenereerd en lokaal bewaard per seizoen en per stand van de wedstrijddata, net als
+// bij "Hoe presteert de ploeg?".
+const PlayerReportCard: React.FC<{
+  games: Game[];
+  data: InsightsData;
+  playerNameById: Map<number, string>;
+  seasonFilter: string;
+}> = ({ games, data, playerNameById, seasonFilter }) => {
+  const reportPlayers = data.players
+    .filter(p => p.minutesTotal > 0 && playerNameById.has(p.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selected = reportPlayers.find(p => p.id === selectedId) ?? reportPlayers[0] ?? null;
+
+  const gamesKey = games.map(g => `${g.id}@${g.lastUpdate || ''}`).sort().join(',');
+  // "v2": sinds de rapporten sterktes én verbeterpunten bevatten.
+  const cacheKey = (playerId: number) => `playerReport:v3:${seasonFilter}:${playerId}:${gamesKey}`;
+  const readCache = (playerId: number): TeamAiInsight[] | null => {
+    try {
+      const raw = localStorage.getItem(cacheKey(playerId));
+      return raw ? (JSON.parse(raw) as TeamAiInsight[]) : null;
+    } catch { return null; }
+  };
+  // Net gegenereerde rapporten (ook als lokale opslag niet beschikbaar is), en welke rapporten
+  // nu bezig of mislukt zijn — per cache-sleutel, zodat een rapport voor oude data niet meetelt.
+  const [generated, setGenerated] = useState<Record<string, TeamAiInsight[]>>({});
+  const [inProgress, setInProgress] = useState<Record<string, boolean>>({});
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
+  // Rapporten waarvoor al een automatische poging liep: maar één keer per data-stand, ook bij
+  // een mislukking (daarna kan het nog met de knop).
+  const autoAttempted = useRef(new Set<string>());
+
+  const generateFor = async (playerId: number) => {
+    const key = cacheKey(playerId);
+    setInProgress(prev => ({ ...prev, [key]: true }));
+    setFailed(prev => ({ ...prev, [key]: false }));
+    try {
+      const result = await generatePlayerReport(playerId, data, playerNameById, games);
+      if (result) {
+        setGenerated(prev => ({ ...prev, [key]: result }));
+        try { localStorage.setItem(key, JSON.stringify(result)); } catch { /* opslag niet beschikbaar */ }
+      } else {
+        setFailed(prev => ({ ...prev, [key]: true }));
+      }
+    } finally {
+      setInProgress(prev => ({ ...prev, [key]: false }));
+    }
+  };
+  const autoGenerate = (playerId: number): Promise<void> | null => {
+    const key = cacheKey(playerId);
+    if (autoAttempted.current.has(key) || readCache(playerId)) return null;
+    autoAttempted.current.add(key);
+    return generateFor(playerId);
+  };
+
+  // Bij het openen van de pagina (of bij nieuwe data) alle ontbrekende rapporten op de
+  // achtergrond genereren, 2 tegelijk, de geselecteerde speler eerst. Zo staat elk rapport klaar
+  // tegen dat je erop klikt, zonder de AI-Worker met een tiental aanvragen tegelijk te bestoken.
+  const REPORT_CONCURRENCY = 2;
+  useEffect(() => {
+    const queue = [...reportPlayers].sort((a, b) => Number(b.id === selected?.id) - Number(a.id === selected?.id)).map(p => p.id);
+    const worker = async () => {
+      while (queue.length > 0) {
+        const job = autoGenerate(queue.shift()!);
+        if (job) await job;
+      }
+    };
+    for (let i = 0; i < REPORT_CONCURRENCY; i++) worker();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamesKey, seasonFilter]);
+
+  // Een speler aanklikken waarvan het rapport nog niet klaarstaat: meteen genereren in plaats van
+  // te wachten tot hij in de wachtrij aan de beurt is.
+  useEffect(() => {
+    if (selected) autoGenerate(selected.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  if (!selected) {
+    return (
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+        <p className="text-gray-400 italic text-sm">Geen data</p>
+      </div>
+    );
+  }
+
+  const report = generated[cacheKey(selected.id)] ?? readCache(selected.id);
+  const playerImpact = data.impact.find(i => i.playerId === selected.id);
+  const impactGroup = playerImpact ? IMPACT_GROUPS.find(g => g.group === playerImpact.group) : undefined;
+  const isGenerating = !!inProgress[cacheKey(selected.id)];
+  const handleGenerate = () => generateFor(selected.id);
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+          <FileText size={18} className="text-blue-500" /> Spelersrapport
+        </div>
+        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">AI</span>
+      </div>
+      <p className="text-[11px] leading-snug text-gray-400 mb-4">
+        Sterktes en verbeterpunten van een speler, op basis van zijn gegevens in vergelijking met de rest van de
+        ploeg. AI kan zich vergissen: lees het als denkpiste, niet als feit.
+      </p>
+      <div className="overflow-x-auto -mx-1 px-1 mb-4">
+        <div className="flex gap-1.5 min-w-min">
+          {reportPlayers.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedId(p.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
+                selected.id === p.id ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Impact op de ploeg: vaste berekening (geen AI), meteen zichtbaar per speler. */}
+      <div className="mb-5">
+        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Impact op de ploeg</h4>
+        {data.team.totalGames < IMPACT_MIN_GAMES ? (
+          <p className="text-sm text-gray-400 italic">
+            Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
+          </p>
+        ) : playerImpact && impactGroup ? (
+          <div className="border-s-2 border-blue-100 ps-3">
+            <div className="text-sm font-bold text-[#04174C]">{impactGroup.label}</div>
+            <p className="text-sm leading-snug text-gray-600 mt-0.5">{explainImpact(selected.name, playerImpact)}</p>
+            {impactGroup.tip && <p className="text-[11px] leading-snug text-gray-400 mt-1">{impactGroup.tip}</p>}          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic">Geen data</p>
+        )}
+      </div>
+      {report && (
+        <div className="space-y-5 mb-4">
+          <div>
+            <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2">Sterktes</h4>
+            <AiInsightList insights={report.filter(i => i.kind !== 'verbeterpunt')} />
+          </div>
+          <div>
+            <h4 className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-2">Verbeterpunten</h4>
+            {report.some(i => i.kind === 'verbeterpunt') ? (
+              <AiInsightList insights={report.filter(i => i.kind === 'verbeterpunt')} />
+            ) : (
+              <p className="text-sm text-gray-400 italic">Geen duidelijke verbeterpunten in de data.</p>
+            )}
+          </div>
+        </div>
+      )}
+      <button
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all ${
+          report ? 'bg-gray-50 text-[#04174C]' : 'bg-[#04174C] text-white'
+        }`}
+      >
+        {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+        {isGenerating ? 'Rapport wordt gegenereerd...' : report ? 'Opnieuw genereren' : `Genereer rapport voor ${selected.name}`}
+      </button>
+      {failed[cacheKey(selected.id)] && (
+        <p className="mt-2 text-[10px] font-bold text-red-500 text-center">
+          Kon geen rapport genereren. Probeer het straks opnieuw (zie console voor details).
+        </p>
+      )}
+    </div>
+  );
+};
+
+// Sterkste opstelling volgens de data, in dezelfde dubbele-ruit-weergave als elders.
+const StrongestLineupCard: React.FC<{
+  lineup: Partial<Record<FieldPosition, LineupSlot>>;
+  playerNameById: Map<number, string>;
+  totalGames: number;
+}> = ({ lineup, playerNameById, totalGames }) => (
+  <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+    <div className="flex items-center gap-2 mb-1 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+      <Trophy size={18} className="text-amber-500" /> Sterkste opstelling
+    </div>
+    <p className="text-[11px] leading-snug text-gray-400 mb-4">
+      Per positie de speler die daar het sterkst presteert. Dat combineert twee dingen: hoe sterk de speler de ploeg
+      in het algemeen maakt (zoals bij "Impact op de ploeg" in het spelersrapport), en hoe hij op die positie presteert: keeper en
+      verdediging op zo weinig mogelijk tegendoelpunten, de aanval op zo veel mogelijk doelpunten, het middenveld op
+      het doelsaldo. Elke speler staat er maar één keer in. Er wordt rekening
+      gehouden met de sterkte van de tegenstander en met wie er naast de speler stond. Hoe meer minuten op een positie,
+      hoe betrouwbaarder: een korte invalbeurt moet dus duidelijk beter zijn om het te halen van een vaste waarde. Enkel spelers met minstens {LINEUP_MIN_MINUTES} minuten op die positie,
+      verspreid over minstens {LINEUP_MIN_GAMES} wedstrijden.
+    </p>
+    {totalGames < IMPACT_MIN_GAMES || Object.keys(lineup).length === 0 ? (
+      <p className="text-gray-400 italic text-sm">
+        Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
+      </p>
+    ) : (
+      <div className="bg-green-50 rounded-2xl border-2 border-green-100 p-4 space-y-6">
+        {FORMATION_ROWS.map((row, i) => (
+          <div key={i} className="flex justify-center gap-2">
+            {row.map(pos => {
+              const slot = lineup[pos];
+              const wingOffset =
+                pos === 'verdediger_links' || pos === 'verdediger_rechts'
+                  ? '-translate-y-6'
+                  : pos === 'aanvaller_links' || pos === 'aanvaller_rechts'
+                  ? 'translate-y-6'
+                  : '';
+              return (
+                <div
+                  key={pos}
+                  title={POSITION_TAB_LABELS[pos].full}
+                  className={`w-20 py-2 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 ${wingOffset} ${
+                    slot ? 'bg-[#04174C] border-[#04174C]' : 'border-dashed border-gray-200 bg-white/60'
+                  }`}
+                >
+                  <span className={`text-[9px] font-black uppercase ${slot ? 'text-blue-200' : 'text-gray-300'}`}>
+                    {POSITION_TAB_LABELS[pos].abbr}
+                  </span>
+                  {slot ? (
+                    <>
+                      <span className="text-xs font-bold text-white truncate max-w-full">{playerNameById.get(slot.playerId)}</span>
+                    </>
+                  ) : (
+                    <span className="text-gray-300 text-sm font-bold">—</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 export const Insights: React.FC<Props> = ({ games, players }) => {
   const availableSeasons = useMemo(() => getAvailableSeasons(games), [games]);
   const [seasonFilter, setSeasonFilter] = useState<string>(() => getSeasonId());
 
   const data = useMemo(() => computeInsights(games, players, seasonFilter), [games, players, seasonFilter]);
-  const { team, players: playerInsights, duos, impact } = data;
+  // Zelfde selectie als computeInsights: voltooide wedstrijden in het gekozen seizoen.
+  const scopedGames = useMemo(
+    () => games.filter(g => g.status === 'finished' && (seasonFilter === 'all' || g.seasonId === seasonFilter)),
+    [games, seasonFilter]
+  );
+  const { team, players: playerInsights, duos, strongestLineup } = data;
 
   const goalRows = rankByMinutesPer(
     playerInsights.map(p => ({ id: p.id, name: p.name, value: p.goals, minutes: p.minutesTotal })),
@@ -525,54 +812,20 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Target size={18} className="text-green-500" /> Doelpunten voor, per type
-              </div>
-              <div className="space-y-2">
-                {sortWithUnknownLast(team.goalsForByType).map(t => (
-                  <div key={t.type} className="flex justify-between items-center text-sm">
-                    <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-700'}`}>{t.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* --- AI: HOE PRESTEERT DE PLOEG --- */}
+          <TeamAiInsightsCard games={scopedGames} team={team} seasonFilter={seasonFilter} />
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Target size={18} className="text-red-500" /> Doelpunten tegen, per type
-              </div>
-              <div className="space-y-2">
-                {team.goalsAgainstByType.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">Geen data</p>
-                ) : (
-                  sortWithUnknownLast(team.goalsAgainstByType).map(t => (
-                    <div key={t.type} className="flex justify-between items-center text-sm">
-                      <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-700'}`}>{t.count}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          {/* --- SPELERSRAPPORT --- */}
+          <PlayerReportCard games={scopedGames} data={data} playerNameById={playerNameById} seasonFilter={seasonFilter} />
 
-          {/* --- IMPACT OP DE PLOEG --- */}
+          {/* --- STERKSTE OPSTELLING --- */}
+          <StrongestLineupCard lineup={strongestLineup} playerNameById={playerNameById} totalGames={team.totalGames} />
+
+          {/* --- DUO'S --- */}
           <StatTabsCard
-            title="Impact op de ploeg"
+            title="Duo's"
             icon={<TrendingUp size={18} className="text-violet-500" />}
             tabs={[
-              {
-                key: 'impact',
-                label: 'Impact',
-                badgeClassName: 'bg-violet-50 text-violet-700',
-                rows: [],
-                content: <ImpactGroups impact={impact} playerNameById={playerNameById} totalGames={team.totalGames} />,
-                description:
-                  'Hoe doet de ploeg het als deze speler op het veld staat? Er wordt rekening gehouden met wie er naast hem speelde en met de sterkte van de tegenstander. Een speler komt pas in groen of oranje als het beeld duidelijk is.',
-              },
               {
                 key: 'strongestDuos',
                 label: "Sterkste duo's",
@@ -587,16 +840,6 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                 rows: weakestDuoRows,
                 description: `Duo's waarbij de ploeg het minst goed doet als ze samen op het veld staan. Vaak een teken om ze over de opstelling te spreiden. Enkel duo's met minstens ${DUO_MIN_MINUTES} minuten samen.`,
               },
-            ]}
-          />
-
-          {/* --- PER SPELER, PER STATISTIEK --- */}
-          <StatTabsCard
-            tabs={[
-              { key: 'goals', label: 'Doelpunten', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: goalRows },
-              { key: 'assists', label: 'Assists', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: assistRows },
-              { key: 'tackles', label: 'Tackles', badgeClassName: 'bg-blue-50 text-blue-700', rows: tackleRows },
-              { key: 'saves', label: 'Reddingen', badgeClassName: 'bg-green-50 text-green-700', rows: saveRows },
             ]}
           />
 
@@ -833,6 +1076,50 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
               },
             ]}
           />
+
+          {/* --- PER SPELER, PER STATISTIEK --- */}
+          <StatTabsCard
+            tabs={[
+              { key: 'goals', label: 'Doelpunten', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: goalRows },
+              { key: 'assists', label: 'Assists', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: assistRows },
+              { key: 'tackles', label: 'Tackles', badgeClassName: 'bg-blue-50 text-blue-700', rows: tackleRows },
+              { key: 'saves', label: 'Reddingen', badgeClassName: 'bg-green-50 text-green-700', rows: saveRows },
+            ]}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                <Target size={18} className="text-green-500" /> Doelpunten voor, per type
+              </div>
+              <div className="space-y-2">
+                {sortWithUnknownLast(team.goalsForByType).map(t => (
+                  <div key={t.type} className="flex justify-between items-center text-sm">
+                    <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-700'}`}>{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+                <Target size={18} className="text-red-500" /> Doelpunten tegen, per type
+              </div>
+              <div className="space-y-2">
+                {team.goalsAgainstByType.length === 0 ? (
+                  <p className="text-gray-400 italic text-sm">Geen data</p>
+                ) : (
+                  sortWithUnknownLast(team.goalsAgainstByType).map(t => (
+                    <div key={t.type} className="flex justify-between items-center text-sm">
+                      <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-700'}`}>{t.count}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
 
           <Leaderboard title="Blessures" icon={<Bandage size={18} className="text-orange-500" />} entries={injuryEntries} unit="keer" badgeClassName="bg-orange-50 text-orange-700" />
         </>

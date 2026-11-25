@@ -51,6 +51,12 @@ export interface PlayerInsight {
   quartersInGoalOrDefense: number; // noemer voor het clean-sheet-percentage
   minutesInGoalOrDefense: number;
   goalsAgainstInGoalOrDefense: number; // tegendoelpunten terwijl de speler keeper/verdediger was
+  // Hetzelfde, apart voor keeper en voor verdediger (minuten: zie minutesByGroup).
+  goalsAgainstAsKeeper: number;
+  goalsAgainstInDefense: number;
+  // Per exacte positie: minuten en doelpunten voor/tegen van de ploeg terwijl hij daar stond
+  // (enkel doelpunten met een minuut). Basis voor o.a. "polyvalent mét meerwaarde".
+  resultsByPosition: Partial<Record<FieldPosition, { minutes: number; goalsFor: number; goalsAgainst: number }>>;
   minutesInAttack: number;
   teamGoalsInAttack: number; // doelpunten van de ploeg terwijl de speler in de aanval stond
   injuries: number;
@@ -94,11 +100,21 @@ export interface PlayerImpact {
   onBench: { minutes: number; goalsFor: number; goalsAgainst: number };
 }
 
+// Eén plek in de sterkste opstelling: wie er staat, en het cijfer waarop die keuze steunt
+// (per wedstrijd van 60', terwijl de speler op exact die positie stond).
+export interface LineupSlot {
+  playerId: number;
+  minutes: number; // minuten op exact deze positie
+  games: number; // aantal wedstrijden waarin de speler op deze positie stond
+  metric: 'tegen' | 'voor' | 'saldo'; // waarop de keuze voor deze positie gebaseerd is
+}
+
 export interface InsightsData {
   team: TeamInsight;
   players: PlayerInsight[];
   duos: DuoInsight[];
   impact: PlayerImpact[];
+  strongestLineup: Partial<Record<FieldPosition, LineupSlot>>;
 }
 
 // Alle seizoenen die in de data voorkomen, meest recente eerst.
@@ -303,6 +319,139 @@ function computeImpact(
   });
 }
 
+// --- STERKSTE OPSTELLING ---
+// Per positiegroep telt wat daar het meest toe doet: bij keeper en verdediging zo weinig mogelijk
+// tegendoelpunten, in de aanval zo veel mogelijk doelpunten, op het middenveld het doelsaldo.
+// Er wordt enkel gekeken naar de minuten op exact die positie (niet de hele linie).
+//
+// Ruwe cijfers per positie zijn misleidend: wie even invalt in een makkelijke wedstrijd, lijkt
+// sterker dan wie er wekenlang stond, ook tegen sterke ploegen. Daarom dezelfde aanpak als bij
+// "Impact op de ploeg": een ridge-regressie met per wedstrijd een eigen vrije term (sterkte van
+// de tegenstander) en per speler-op-positie een bijdrage, die bij weinig minuten sterk naar 0
+// getrokken wordt. Zo halen veel minuten tegen allerlei tegenstanders het van een korte,
+// toevallig goede invalbeurt.
+//
+// De score van een speler op een positie = zijn algemene impact op de ploeg (dezelfde schatting
+// als "Impact op de ploeg") + hoe hij specifiek op die positie presteert. Zonder die algemene
+// impact zou een vaste waarde die bijna altijd op dezelfde plek staat vooral met zichzelf
+// vergeleken worden en "neutraal" lijken, en zou een speler met een negatieve impact op de ploeg
+// toch een plek kunnen krijgen op basis van enkele goede minuten op één positie.
+//
+// Bovendien rangschikken we op een voorzichtige schatting: hoe minder minuten op de positie, hoe
+// onzekerder de schatting, en hoe meer we er afhalen (∝ 1/√minuten). Een korte invalbeurt moet
+// dus duidelijk beter zijn om het te halen van iemand die er al lang en vaak staat.
+// Afgesteld op de echte data (nov. 2026): bij 0,5 haalden spelers met amper 30 min op een positie
+// het nog van vaste waarden met 100+ minuten daar.
+const LINEUP_UNCERTAINTY = 1.0; // doelpunten per wedstrijd die we afhalen bij 60 minuten op de positie
+export const LINEUP_MIN_MINUTES = 30; // minstens 2 kwarten op die positie om in aanmerking te komen
+export const LINEUP_MIN_GAMES = 2; // en in minstens 2 verschillende wedstrijden
+const LINEUP_CANDIDATES_PER_POSITION = 4;
+
+export interface GroupStats { minutes: number; goalsFor: number; goalsAgainst: number; games: Set<number> }
+
+// Een stint met de bezetting per positie (i.p.v. enkel de lijst spelers).
+export interface PositionalStint {
+  lineup: Partial<Record<FieldPosition, number>>;
+  gameIndex: number;
+  minutes: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+function computeStrongestLineup(
+  positionalStints: PositionalStint[],
+  statsByPlayerAndPosition: Record<number, Partial<Record<FieldPosition, GroupStats>>>,
+  eligibleIds: Set<number>,
+  gameCount: number,
+  overallImpact: Map<number, number>
+): Partial<Record<FieldPosition, LineupSlot>> {
+  const positions = Object.keys(POSITION_TO_GROUP) as FieldPosition[];
+  if (positionalStints.length === 0) return {};
+
+  // Elke (speler, positie)-combinatie krijgt een eigen sleutel, zodat we de bestaande
+  // regressie (estimatePlayerContributions) kunnen hergebruiken: die werkt met "spelers-id's".
+  const keyOf = (id: number, pos: FieldPosition) => id * 16 + positions.indexOf(pos);
+  const keys: number[] = [];
+  const keyInfo = new Map<number, { id: number; pos: FieldPosition }>();
+  eligibleIds.forEach(id => positions.forEach(pos => {
+    const st = statsByPlayerAndPosition[id]?.[pos];
+    if (st && st.minutes >= LINEUP_MIN_MINUTES && st.games.size >= LINEUP_MIN_GAMES) {
+      const key = keyOf(id, pos);
+      keys.push(key);
+      keyInfo.set(key, { id, pos });
+    }
+  }));
+  if (keys.length === 0) return {};
+
+  // Eén regressie per maatstaf. "tegen" rekent enkel met tegendoelpunten (negatief = goed wordt
+  // positief = goed door het minteken), "voor" enkel met doelpunten, "saldo" met beide.
+  const toKeyedStints = (useFor: boolean, useAgainst: boolean): Stint[] =>
+    positionalStints.map(ps => ({
+      playerIds: (Object.entries(ps.lineup) as [FieldPosition, number][])
+        .filter(([, id]) => id != null)
+        .map(([pos, id]) => keyOf(id, pos)),
+      gameIndex: ps.gameIndex,
+      minutes: ps.minutes,
+      goalsFor: useFor ? ps.goalsFor : 0,
+      goalsAgainst: useAgainst ? ps.goalsAgainst : 0,
+    }));
+  const estimates = {
+    voor: estimatePlayerContributions(toKeyedStints(true, false), keys, gameCount),
+    tegen: estimatePlayerContributions(toKeyedStints(false, true), keys, gameCount),
+    saldo: estimatePlayerContributions(toKeyedStints(true, true), keys, gameCount),
+  };
+
+  type Candidate = { slot: LineupSlot; score: number };
+  const candidatesByPosition: Candidate[][] = positions.map(pos => {
+    const group = POSITION_TO_GROUP[pos];
+    const metric: LineupSlot['metric'] = group === 'aanval' ? 'voor' : group === 'midden' ? 'saldo' : 'tegen';
+    const candidates: Candidate[] = [];
+    keys.forEach((key, i) => {
+      const info = keyInfo.get(key)!;
+      if (info.pos !== pos) return;
+      const st = statsByPlayerAndPosition[info.id][pos]!;
+      candidates.push({
+        slot: { playerId: info.id, minutes: st.minutes, games: st.games.size, metric },
+        score: (overallImpact.get(info.id) || 0) + estimates[metric][i] - LINEUP_UNCERTAINTY * Math.sqrt(60 / st.minutes),
+      });
+    });
+    return candidates.sort((a, b) => b.score - a.score).slice(0, LINEUP_CANDIDATES_PER_POSITION);
+  });
+
+  // Beste combinatie zoeken waarin elke speler maar één keer voorkomt. Per positie bekijken we
+  // enkel de beste kandidaten — klein genoeg om alle combinaties te proberen. Een positie zonder
+  // geschikte kandidaat blijft leeg.
+  let best: { score: number; filled: number; picks: (Candidate | null)[] } = { score: -Infinity, filled: -1, picks: [] };
+  const picks: (Candidate | null)[] = [];
+  const used = new Set<number>();
+  const search = (i: number, score: number, filled: number) => {
+    if (i === positions.length) {
+      if (filled > best.filled || (filled === best.filled && score > best.score)) best = { score, filled, picks: [...picks] };
+      return;
+    }
+    let placed = false;
+    candidatesByPosition[i].forEach(c => {
+      if (used.has(c.slot.playerId)) return;
+      placed = true;
+      used.add(c.slot.playerId);
+      picks.push(c);
+      search(i + 1, score + c.score, filled + 1);
+      picks.pop();
+      used.delete(c.slot.playerId);
+    });
+    if (!placed) {
+      picks.push(null);
+      search(i + 1, score, filled);
+      picks.pop();
+    }
+  };
+  search(0, 0, 0);
+
+  const lineup: Partial<Record<FieldPosition, LineupSlot>> = {};
+  best.picks.forEach((c, i) => { if (c) lineup[positions[i]] = c.slot; });
+  return lineup;
+}
+
 // Reconstrueert, voor één kwart, hoeveel minuten elke speler op welke positie(groep) heeft
 // gestaan — gebaseerd op de segmenten hierboven.
 function reconstructQuarterMinutes(quarter: Quarter): {
@@ -353,12 +502,16 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
   const cleanSheetsByPlayer: Record<number, number> = {};
   const quartersInGoalOrDefenseByPlayer: Record<number, number> = {};
   const goalsAgainstInGoalOrDefenseByPlayer: Record<number, number> = {};
+  const goalsAgainstAsKeeperByPlayer: Record<number, number> = {};
+  const goalsAgainstInDefenseByPlayer: Record<number, number> = {};
   const teamGoalsInAttackByPlayer: Record<number, number> = {};
   const stints: Stint[] = [];
   const minutesTotalByPlayer: Record<number, number> = {};
   const minutesByGroupByPlayer: Record<number, Record<PositionGroup, number>> = {};
   const minutesByPositionByPlayer: Record<number, Partial<Record<FieldPosition, number>>> = {};
   const matchesPresentByPlayer: Record<number, number> = {};
+  const statsByPlayerAndPosition: Record<number, Partial<Record<FieldPosition, GroupStats>>> = {};
+  const positionalStints: PositionalStint[] = [];
 
   const goalsForByType: Record<string, number> = {};
   const goalsAgainstByType: Record<string, number> = {};
@@ -434,6 +587,12 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
         playersInGroupsAt(segments, e.minute, ['keeper', 'verdediging']).forEach(id => {
           goalsAgainstInGoalOrDefenseByPlayer[id] = (goalsAgainstInGoalOrDefenseByPlayer[id] || 0) + 1;
         });
+        playersInGroupsAt(segments, e.minute, ['keeper']).forEach(id => {
+          goalsAgainstAsKeeperByPlayer[id] = (goalsAgainstAsKeeperByPlayer[id] || 0) + 1;
+        });
+        playersInGroupsAt(segments, e.minute, ['verdediging']).forEach(id => {
+          goalsAgainstInDefenseByPlayer[id] = (goalsAgainstInDefenseByPlayer[id] || 0) + 1;
+        });
       });
 
       // Aanval, het spiegelbeeld van hierboven: doelpunten van de ploeg toewijzen aan wie op dat
@@ -459,6 +618,21 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
         (quarter.opponentGoalEvents || []).forEach(e => { if (e.minute != null) stintAt(e.minute).goalsAgainst += 1; });
       }
       stints.push(...quarterStints);
+
+      // Voor de sterkste opstelling: per speler en exacte positie de minuten en de doelpunten
+      // voor/tegen tijdens die minuten.
+      segments.forEach((seg, segIndex) => {
+        const stint = quarterStints[segIndex];
+        (Object.entries(seg.lineup) as [FieldPosition, number][]).forEach(([pos, id]) => {
+          if (id == null) return;
+          const st = ((statsByPlayerAndPosition[id] ??= {})[pos] ??= { minutes: 0, goalsFor: 0, goalsAgainst: 0, games: new Set() });
+          st.games.add(gameIndex);
+          st.minutes += stint.minutes;
+          st.goalsFor += stint.goalsFor;
+          st.goalsAgainst += stint.goalsAgainst;
+        });
+        positionalStints.push({ lineup: seg.lineup, gameIndex, minutes: stint.minutes, goalsFor: stint.goalsFor, goalsAgainst: stint.goalsAgainst });
+      });
 
       if ((quarter.opponentGoalEvents || []).length === 0) {
         playersInGoalOrDefense.forEach(id => {
@@ -513,6 +687,11 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
       quartersInGoalOrDefense: quartersInGoalOrDefenseByPlayer[p.id] || 0,
       minutesInGoalOrDefense: (minutesByGroupByPlayer[p.id]?.keeper || 0) + (minutesByGroupByPlayer[p.id]?.verdediging || 0),
       goalsAgainstInGoalOrDefense: goalsAgainstInGoalOrDefenseByPlayer[p.id] || 0,
+      goalsAgainstAsKeeper: goalsAgainstAsKeeperByPlayer[p.id] || 0,
+      goalsAgainstInDefense: goalsAgainstInDefenseByPlayer[p.id] || 0,
+      resultsByPosition: Object.fromEntries(
+        Object.entries(statsByPlayerAndPosition[p.id] || {}).map(([pos, st]) => [pos, { minutes: st!.minutes, goalsFor: st!.goalsFor, goalsAgainst: st!.goalsAgainst }])
+      ),
       minutesInAttack: minutesByGroupByPlayer[p.id]?.aanval || 0,
       teamGoalsInAttack: teamGoalsInAttackByPlayer[p.id] || 0,
       injuries: injuriesByPlayer[p.id] || 0,
@@ -536,5 +715,13 @@ export const computeInsights = (games: Game[], players: Player[], seasonFilter: 
   const presentByGame = scopedGames.map(g => new Set(g.playersPresent));
   const impact = computeImpact(stints, playedIds, totalGames, presentByGame);
 
-  return { team, players: playerInsights, duos: Object.values(duos), impact };
+  const strongestLineup = computeStrongestLineup(
+    positionalStints,
+    statsByPlayerAndPosition,
+    new Set(players.map(p => p.id)),
+    totalGames,
+    new Map(impact.map(i => [i.playerId, i.estimate]))
+  );
+
+  return { team, players: playerInsights, duos: Object.values(duos), impact, strongestLineup };
 };

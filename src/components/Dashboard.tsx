@@ -137,7 +137,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   const topKeepers = Object.entries(savesByKeeper).map(([id, saves]) => ({ id: parseInt(id), saves })).sort((a, b) => b.saves - a.saves).slice(0, 3);
 
   return (
-    <div className="max-w-2xl mx-auto p-4 pb-32 select-none space-y-6">
+    <div className={`max-w-2xl mx-auto p-4 select-none space-y-6 ${isAdminMode ? 'pb-48' : 'pb-32'}`}>
       {/* Header */}
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
         <h1 className="text-3xl font-black text-[#04174C] tracking-tight text-start leading-none uppercase">U10 Kaulille</h1>
@@ -273,18 +273,25 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           </div>
         </div>
         
-        {/* --- NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) --- */}
+        {/* --- NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) ---
+            Vast onderaan het scherm, net boven de navigatiebalk, zonder achtergrond: de rest van
+            de pagina scrollt erachter door. De wrapper laat klikken door (pointer-events-none),
+            enkel de knop zelf vangt ze op. */}
         {isAdminMode && (
-          <button
-            dir="ltr"
-            lang="nl"
-            onClick={startNewGame}
-            disabled={!canStart}
-            className="w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-          >
-            <Plus size={22} strokeWidth={3} />
-            <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
-          </button>
+          <div className="fixed left-0 right-0 bottom-[5.5rem] z-40 px-4 pointer-events-none">
+            <div className="max-w-2xl mx-auto">
+              <button
+                dir="ltr"
+                lang="nl"
+                onClick={startNewGame}
+                disabled={!canStart}
+                className="pointer-events-auto w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+              >
+                <Plus size={22} strokeWidth={3} />
+                <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Individuele prestaties (Topschutter, De Muur, Hakbijl, Assistenkoning) - alleen zichtbaar in Admin mode */}
