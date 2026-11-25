@@ -244,7 +244,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
               return (
                 <div
                   key={idx}
-                  className="h-7 px-2.5 rounded-lg flex items-center justify-center text-[10px] font-black bg-white border-2 border-[#04174C] text-[#04174C] shadow-sm whitespace-nowrap"
+                  className="h-7 px-2.5 rounded-lg flex items-center justify-center text-xs font-semibold bg-navy text-white shadow-sm whitespace-nowrap"
                 >
                   Kwart {idx + 1}
                 </div>
@@ -253,12 +253,12 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             return (
               <div
                 key={idx}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${isPast ? 'bg-[#04174C]' : 'bg-gray-200'}`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${isPast ? 'bg-navy' : 'bg-gray-200'}`}
               />
             );
           })}
         </div>
-        <button onClick={() => setShowCancelConfirm(true)} className="text-red-500 flex items-center gap-1 font-semibold text-sm shrink-0">
+        <button onClick={() => setShowCancelConfirm(true)} className="text-red-600 flex items-center gap-1 font-semibold text-sm shrink-0 min-h-11 px-1">
           <X size={18} /> Annuleren
         </button>
       </div>
@@ -303,13 +303,13 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
 
       {/* VIEW-SWITCH: Event ingave (links) / Event list (rechts) — ook te wisselen door te swipen */}
       {currentStep === 'play' && quarterPhase === 'actions' && (
-        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl shadow-sm mt-4">
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mt-4">
           <button
             onClick={() => setPlayViewMode('quick')}
             title="Event ingave"
             aria-label="Event ingave"
-            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
-              playViewMode === 'quick' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+            className={`flex-1 py-3 rounded-lg flex items-center justify-center transition-all ${
+              playViewMode === 'quick' ? 'bg-navy text-white shadow-sm' : 'text-gray-500'
             }`}
           >
             <LayoutGrid size={18} />
@@ -318,8 +318,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
             onClick={() => setPlayViewMode('list')}
             title="Event list"
             aria-label="Event list"
-            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center transition-all ${
-              playViewMode === 'list' ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+            className={`flex-1 py-3 rounded-lg flex items-center justify-center transition-all ${
+              playViewMode === 'list' ? 'bg-navy text-white shadow-sm' : 'text-gray-500'
             }`}
           >
             <List size={18} />
@@ -347,7 +347,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
     {currentStep !== 'setup' && !(quarterPhase === 'lineup' && isEditingLineup) && (
       <button
         onClick={handleBack}
-        className="flex-none w-20 bg-white border-2 border-[#04174C] text-[#04174C] py-3 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
+        className="flex-none w-20 bg-white ring-1 ring-navy/15 text-navy py-3.5 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center shadow-sm"
         title="Terug"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -361,10 +361,10 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       <button
         onClick={() => { startQuarterActions(); setIsEditingLineup(false); }}
         disabled={!isLineupComplete(currentGame.quarters[activeQuarterIdx])}
-        className={`flex-1 py-3 rounded-xl font-bold active:scale-95 transition-all uppercase tracking-widest text-sm ${
+        className={`flex-1 py-3.5 rounded-xl font-display text-xl font-bold uppercase leading-none active:scale-95 transition-all ${
           isLineupComplete(currentGame.quarters[activeQuarterIdx])
-            ? 'bg-[#04174C] text-white shadow-xl shadow-blue-200'
-            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            ? 'bg-volt text-navy shadow-lg shadow-navy/20'
+            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
         }`}
       >
         Bevestigen
@@ -373,12 +373,11 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       /* START / VOLGENDE / OPSLAAN KNOP */
       <button
         onClick={handleNext}
-        className={`flex-1 text-white py-3 rounded-xl font-bold shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm
-          ${currentStep === 'review' ? 'bg-green-600 shadow-green-200' : 'bg-[#04174C] shadow-blue-200'}`}
+        className="flex-1 bg-volt text-navy py-3.5 rounded-xl font-display text-xl font-bold uppercase leading-none shadow-lg shadow-navy/20 active:scale-95 transition-all"
       >
-        {currentStep === 'setup' && 'OPSTELLING INGEVEN'}
+        {currentStep === 'setup' && 'Opstelling ingeven'}
         {currentStep === 'play' && (activeQuarterIdx < 3 ? `Einde kwart ${activeQuarterIdx + 1}` : 'Einde wedstrijd')}
-        {currentStep === 'review' && 'MATCH OPSLAAN'}
+        {currentStep === 'review' && 'Match opslaan'}
       </button>
     )}
   </div>
@@ -390,8 +389,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       {/* ANNULEER CONFIRMATION POP-UP */}
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/30 z-[60] flex items-center justify-center px-4" onMouseDown={() => setShowCancelConfirm(false)}>
-          <div className="bg-white p-6 rounded-xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
-            <div className="mb-6 text-lg font-bold text-[#04174C]">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-xs w-full select-none" onMouseDown={e => e.stopPropagation()}>
+            <div className="mb-6 text-lg font-bold text-navy">
               {isEditingCompletedGame ? (
                 <>
                   Bewerken annuleren?{' '}
@@ -409,8 +408,8 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
               )}
             </div>
             <div className="flex justify-end gap-3">
-              <button className="px-4 py-2 rounded-lg font-semibold text-gray-500 hover:bg-gray-100 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>
-              <button className="px-4 py-2 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={async () => { 
+              <button className="px-5 py-3 rounded-lg font-semibold text-navy bg-gray-100 hover:bg-gray-200 transition" onClick={() => setShowCancelConfirm(false)}>Nee</button>
+              <button className="px-5 py-3 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition" onClick={async () => { 
                 await onCancel();
                 setShowCancelConfirm(false); 
               }}>Ja</button>

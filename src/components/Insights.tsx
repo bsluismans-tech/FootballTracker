@@ -63,18 +63,18 @@ const Leaderboard: React.FC<{
 }> = ({ title, icon, entries, unit, badgeClassName }) => {
   const sorted = [...entries].filter(e => e.value > 0).sort((a, b) => b.value - a.value);
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-      <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+    <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+      <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
         {icon} {title}
       </div>
       {sorted.length === 0 ? (
-        <p className="text-gray-400 italic text-sm">Geen data</p>
+        <p className="text-gray-500 italic text-sm">Geen data</p>
       ) : (
         <div className="space-y-2.5">
           {sorted.map((entry, index) => (
             <div key={entry.id} className="flex justify-between items-center text-sm gap-2">
               <span className="font-semibold text-gray-700 truncate">{index + 1}. {entry.name}</span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-lg shrink-0 whitespace-nowrap ${badgeClassName}`}>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap ${badgeClassName}`}>
                 {entry.suffix ?? `${entry.value} ${unit}`}
               </span>
             </div>
@@ -128,9 +128,9 @@ const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: Sta
   const activeTab = tabs.find(t => t.key === activeKey) ?? tabs[0];
 
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+    <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
       {title && (
-        <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
+        <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
           {icon} {title}
         </div>
       )}
@@ -140,8 +140,8 @@ const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: Sta
             <button
               key={tab.key}
               onClick={() => setActiveKey(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
-                activeKey === tab.key ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-500'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                activeKey === tab.key ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600'
               }`}
             >
               {tab.label}
@@ -150,19 +150,19 @@ const StatTabsCard: React.FC<{ title?: string; icon?: React.ReactNode; tabs: Sta
         </div>
       </div>
       {activeTab.description && (
-        <p className="text-[11px] leading-snug text-gray-400 -mt-2 mb-4">{activeTab.description}</p>
+        <p className="text-xs leading-snug text-gray-500 -mt-2 mb-4">{activeTab.description}</p>
       )}
       {activeTab.content ?? (activeTab.rows.length === 0 ? (
-        <p className="text-gray-400 italic text-sm">Geen data</p>
+        <p className="text-gray-500 italic text-sm">Geen data</p>
       ) : (
         <div className="space-y-2.5">
           {activeTab.rows.map((row, index) => (
             <div key={row.id} className="flex justify-between items-center text-sm gap-2">
               <span className="font-semibold text-gray-700 truncate">{index + 1}. {row.name}</span>
               <span className="flex items-center gap-2 shrink-0">
-                <span className="text-[11px] text-gray-400 whitespace-nowrap">{row.detail}</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{row.detail}</span>
                 <span
-                  className={`text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-md whitespace-nowrap ${
                     row.badgeClassName ?? activeTab.badgeClassName
                   }`}
                 >
@@ -300,8 +300,8 @@ const sortWithUnknownLast = <T extends { type: string }>(items: T[]): T[] => {
 const AiInsightList: React.FC<{ insights: TeamAiInsight[] }> = ({ insights }) => (
   <div className="space-y-3">
     {insights.map((insight, index) => (
-      <div key={index} className="border-s-2 border-blue-100 ps-3">
-        {insight.title && <div className="text-sm font-bold text-[#04174C]">{insight.title}</div>}
+      <div key={index} className="border-s-2 border-navy/10 ps-3">
+        {insight.title && <div className="text-sm font-bold text-navy">{insight.title}</div>}
         <p className="text-sm leading-snug text-gray-600">{insight.text}</p>
       </div>
     ))}
@@ -352,14 +352,14 @@ const TeamAiInsightsCard: React.FC<{ games: Game[]; team: TeamInsight; seasonFil
   }
 
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+    <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="flex items-center gap-2 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-          <Sparkles size={18} className="text-blue-500" /> Hoe presteert de ploeg?
+        <div className="flex items-center gap-2 text-base font-semibold text-navy">
+          <Sparkles size={18} className="text-navy/40" /> Hoe presteert de ploeg?
         </div>
-        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">AI</span>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-navy/5 text-navy">AI</span>
       </div>
-      <p className="text-[11px] leading-snug text-gray-400 mb-4">
+      <p className="text-xs leading-snug text-gray-500 mb-4">
         Patronen over de ploeg als geheel, op basis van {team.totalGames} wedstrijden. AI kan zich vergissen: lees het als denkpiste, niet als feit.
       </p>
       {insights && (
@@ -371,14 +371,14 @@ const TeamAiInsightsCard: React.FC<{ games: Game[]; team: TeamInsight; seasonFil
         onClick={handleGenerate}
         disabled={isGenerating}
         className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all ${
-          insights ? 'bg-gray-50 text-[#04174C]' : 'bg-[#04174C] text-white'
+          insights ? 'bg-gray-100 text-navy' : 'bg-navy text-white'
         }`}
       >
         {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
         {isGenerating ? 'Inzichten worden gegenereerd...' : insights ? 'Opnieuw genereren' : 'Genereer ploeginzichten'}
       </button>
       {failed && (
-        <p className="mt-2 text-[10px] font-bold text-red-500 text-center">
+        <p className="mt-2 text-xs font-semibold text-red-600 text-center">
           Kon geen inzichten genereren. Probeer het straks opnieuw (zie console voor details).
         </p>
       )}
@@ -467,8 +467,8 @@ const PlayerReportCard: React.FC<{
 
   if (!selected) {
     return (
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-        <p className="text-gray-400 italic text-sm">Geen data</p>
+      <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+        <p className="text-gray-500 italic text-sm">Geen data</p>
       </div>
     );
   }
@@ -480,14 +480,14 @@ const PlayerReportCard: React.FC<{
   const handleGenerate = () => generateFor(selected.id);
 
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+    <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="flex items-center gap-2 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-          <FileText size={18} className="text-blue-500" /> Spelersrapport
+        <div className="flex items-center gap-2 text-base font-semibold text-navy">
+          <FileText size={18} className="text-navy/40" /> Spelersrapport
         </div>
-        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">AI</span>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-navy/5 text-navy">AI</span>
       </div>
-      <p className="text-[11px] leading-snug text-gray-400 mb-4">
+      <p className="text-xs leading-snug text-gray-500 mb-4">
         Sterktes en verbeterpunten van een speler, op basis van zijn gegevens in vergelijking met de rest van de
         ploeg. AI kan zich vergissen: lees het als denkpiste, niet als feit.
       </p>
@@ -497,8 +497,8 @@ const PlayerReportCard: React.FC<{
             <button
               key={p.id}
               onClick={() => setSelectedId(p.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
-                selected.id === p.id ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-500'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                selected.id === p.id ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600'
               }`}
             >
               {p.name}
@@ -508,32 +508,32 @@ const PlayerReportCard: React.FC<{
       </div>
       {/* Impact op de ploeg: vaste berekening (geen AI), meteen zichtbaar per speler. */}
       <div className="mb-5">
-        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Impact op de ploeg</h4>
+        <h4 className="text-sm font-semibold text-gray-500 mb-2">Impact op de ploeg</h4>
         {data.team.totalGames < IMPACT_MIN_GAMES ? (
-          <p className="text-sm text-gray-400 italic">
+          <p className="text-sm text-gray-500 italic">
             Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
           </p>
         ) : playerImpact && impactGroup ? (
-          <div className="border-s-2 border-blue-100 ps-3">
-            <div className="text-sm font-bold text-[#04174C]">{impactGroup.label}</div>
+          <div className="border-s-2 border-navy/10 ps-3">
+            <div className="text-sm font-bold text-navy">{impactGroup.label}</div>
             <p className="text-sm leading-snug text-gray-600 mt-0.5">{explainImpact(selected.name, playerImpact)}</p>
-            {impactGroup.tip && <p className="text-[11px] leading-snug text-gray-400 mt-1">{impactGroup.tip}</p>}          </div>
+            {impactGroup.tip && <p className="text-xs leading-snug text-gray-500 mt-1">{impactGroup.tip}</p>}          </div>
         ) : (
-          <p className="text-sm text-gray-400 italic">Geen data</p>
+          <p className="text-sm text-gray-500 italic">Geen data</p>
         )}
       </div>
       {report && (
         <div className="space-y-5 mb-4">
           <div>
-            <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2">Sterktes</h4>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-volt-ink mb-2"><span aria-hidden className="w-2 h-2 rounded-full bg-volt" />Sterktes</h4>
             <AiInsightList insights={report.filter(i => i.kind !== 'verbeterpunt')} />
           </div>
           <div>
-            <h4 className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-2">Verbeterpunten</h4>
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-orange-600 mb-2"><span aria-hidden className="w-2 h-2 rounded-full bg-orange-400" />Verbeterpunten</h4>
             {report.some(i => i.kind === 'verbeterpunt') ? (
               <AiInsightList insights={report.filter(i => i.kind === 'verbeterpunt')} />
             ) : (
-              <p className="text-sm text-gray-400 italic">Geen duidelijke verbeterpunten in de data.</p>
+              <p className="text-sm text-gray-500 italic">Geen duidelijke verbeterpunten in de data.</p>
             )}
           </div>
         </div>
@@ -542,14 +542,14 @@ const PlayerReportCard: React.FC<{
         onClick={handleGenerate}
         disabled={isGenerating}
         className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all ${
-          report ? 'bg-gray-50 text-[#04174C]' : 'bg-[#04174C] text-white'
+          report ? 'bg-gray-100 text-navy' : 'bg-navy text-white'
         }`}
       >
         {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
         {isGenerating ? 'Rapport wordt gegenereerd...' : report ? 'Opnieuw genereren' : `Genereer rapport voor ${selected.name}`}
       </button>
       {failed[cacheKey(selected.id)] && (
-        <p className="mt-2 text-[10px] font-bold text-red-500 text-center">
+        <p className="mt-2 text-xs font-semibold text-red-600 text-center">
           Kon geen rapport genereren. Probeer het straks opnieuw (zie console voor details).
         </p>
       )}
@@ -563,11 +563,11 @@ const StrongestLineupCard: React.FC<{
   playerNameById: Map<number, string>;
   totalGames: number;
 }> = ({ lineup, playerNameById, totalGames }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-    <div className="flex items-center gap-2 mb-1 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-      <Trophy size={18} className="text-amber-500" /> Sterkste opstelling
+  <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+    <div className="flex items-center gap-2 mb-1 text-base font-semibold text-navy">
+      <Trophy size={18} className="text-navy/40" /> Sterkste opstelling
     </div>
-    <p className="text-[11px] leading-snug text-gray-400 mb-4">
+    <p className="text-xs leading-snug text-gray-500 mb-4">
       Per positie de speler die daar het sterkst presteert. Dat combineert twee dingen: hoe sterk de speler de ploeg
       in het algemeen maakt (zoals bij "Impact op de ploeg" in het spelersrapport), en hoe hij op die positie presteert: keeper en
       verdediging op zo weinig mogelijk tegendoelpunten, de aanval op zo veel mogelijk doelpunten, het middenveld op
@@ -577,7 +577,7 @@ const StrongestLineupCard: React.FC<{
       verspreid over minstens {LINEUP_MIN_GAMES} wedstrijden.
     </p>
     {totalGames < IMPACT_MIN_GAMES || Object.keys(lineup).length === 0 ? (
-      <p className="text-gray-400 italic text-sm">
+      <p className="text-gray-500 italic text-sm">
         Vanaf {IMPACT_MIN_GAMES} afgewerkte wedstrijden is er genoeg data om dit te tonen.
       </p>
     ) : (
@@ -597,10 +597,10 @@ const StrongestLineupCard: React.FC<{
                   key={pos}
                   title={POSITION_TAB_LABELS[pos].full}
                   className={`w-20 py-2 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 ${wingOffset} ${
-                    slot ? 'bg-[#04174C] border-[#04174C]' : 'border-dashed border-gray-200 bg-white/60'
+                    slot ? 'bg-navy border-navy' : 'border-dashed border-gray-200 bg-white/60'
                   }`}
                 >
-                  <span className={`text-[9px] font-black uppercase ${slot ? 'text-blue-200' : 'text-gray-300'}`}>
+                  <span className={`text-[11px] font-semibold ${slot ? 'text-volt' : 'text-gray-500'}`}>
                     {POSITION_TAB_LABELS[pos].abbr}
                   </span>
                   {slot ? (
@@ -608,7 +608,7 @@ const StrongestLineupCard: React.FC<{
                       <span className="text-xs font-bold text-white truncate max-w-full">{playerNameById.get(slot.playerId)}</span>
                     </>
                   ) : (
-                    <span className="text-gray-300 text-sm font-bold">—</span>
+                    <span className="text-gray-400 text-sm font-bold">—</span>
                   )}
                 </div>
               );
@@ -763,14 +763,14 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
     <div className="max-w-2xl mx-auto p-4 pb-32 space-y-6">
       {/* Header + seizoensfilter */}
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="text-[#04174C]" size={24} />
-          <h1 className="text-2xl font-bold text-[#04174C]">Inzichten</h1>
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
+          <h1 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">Inzichten</h1>
         </div>
         <select
           value={seasonFilter}
           onChange={e => setSeasonFilter(e.target.value)}
-          className="bg-white border border-blue-100 text-[#04174C] text-xs font-bold rounded-xl px-3 py-2 shadow-sm"
+          className="bg-white border border-navy/10 text-navy text-sm font-semibold rounded-xl px-3 py-2 shadow-sm"
         >
           {!availableSeasons.includes(seasonFilter) && (
             <option value={seasonFilter}>{seasonFilter}</option>
@@ -783,20 +783,20 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
       </div>
 
       {team.totalGames === 0 ? (
-        <div className="bg-white border-2 border-dashed border-gray-100 rounded-2xl p-8 text-center">
-          <BarChart3 className="mx-auto text-gray-200 mb-2" size={32} />
-          <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">
+        <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
+          <BarChart3 className="mx-auto text-gray-300 mb-2" size={32} />
+          <p className="text-gray-500 text-sm font-medium">
             Nog geen voltooide wedstrijden in dit seizoen
           </p>
         </div>
       ) : (
         <>
           {/* --- TEAM-NIVEAU --- */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-50">
-            <div className="flex items-center gap-2 mb-6 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-              <Users size={18} className="text-blue-500" /> Team-gemiddeldes per wedstrijd
+          <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+            <div className="flex items-center gap-2 mb-5 text-base font-semibold text-navy">
+              <Users size={18} className="text-navy/40" /> Team-gemiddeldes per wedstrijd
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-y-6 gap-x-2 text-center">
               {[
                 { label: 'Doelpunten voor', value: team.avgGoalsFor },
                 { label: 'Doelpunten tegen', value: team.avgGoalsAgainst },
@@ -805,8 +805,8 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                 { label: 'Saves', value: team.avgSaves },
               ].map(item => (
                 <div key={item.label}>
-                  <div className="text-xl font-black text-[#04174C] tabular-nums">{formatAvg(item.value)}</div>
-                  <div className="text-[9px] uppercase font-black tracking-widest text-gray-400">{item.label}</div>
+                  <div className="font-display text-4xl font-bold text-navy leading-none tabular-nums">{formatAvg(item.value)}</div>
+                  <div className="mt-1 text-xs font-medium text-gray-500">{item.label}</div>
                 </div>
               ))}
             </div>
@@ -824,19 +824,19 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
           {/* --- DUO'S --- */}
           <StatTabsCard
             title="Duo's"
-            icon={<TrendingUp size={18} className="text-violet-500" />}
+            icon={<TrendingUp size={18} className="text-navy/40" />}
             tabs={[
               {
                 key: 'strongestDuos',
                 label: "Sterkste duo's",
-                badgeClassName: 'bg-violet-50 text-violet-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: strongestDuoRows,
                 description: `Het doelsaldo per 60 minuten wanneer deze twee spelers samen op het veld staan. Hoe hoger, hoe beter. Enkel duo's met minstens ${DUO_MIN_MINUTES} minuten samen.`,
               },
               {
                 key: 'weakestDuos',
                 label: "Zwakste duo's",
-                badgeClassName: 'bg-violet-50 text-violet-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: weakestDuoRows,
                 description: `Duo's waarbij de ploeg het minst goed doet als ze samen op het veld staan. Vaak een teken om ze over de opstelling te spreiden. Enkel duo's met minstens ${DUO_MIN_MINUTES} minuten samen.`,
               },
@@ -845,18 +845,18 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
 
           {/* Speelminuten + aanwezigheid gecombineerd: lijst (compact, naast elkaar) of
               staafdiagram, wisselbaar via de tabjes rechtsboven. */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+          <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
             <div className="flex items-center justify-between gap-2 mb-4">
-              <div className="flex items-center gap-2 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Clock size={18} className="text-[#04174C]" /> Speelminuten &amp; aanwezigheid
+              <div className="flex items-center gap-2 text-base font-semibold text-navy">
+                <Clock size={18} className="text-navy/40" /> Speelminuten &amp; aanwezigheid
               </div>
-              <div className="flex bg-gray-100 rounded-lg p-0.5 text-[10px] font-black uppercase tracking-wider shrink-0">
+              <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs font-semibold shrink-0">
                 {(['lijst', 'grafiek'] as const).map(mode => (
                   <button
                     key={mode}
                     onClick={() => setMinutesViewMode(mode)}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
-                      minutesViewMode === mode ? 'bg-white text-[#04174C] shadow-sm' : 'text-gray-400'
+                    className={`px-2.5 py-1 rounded-md capitalize transition-all ${
+                      minutesViewMode === mode ? 'bg-navy text-white' : 'text-gray-500'
                     }`}
                   >
                     {mode}
@@ -866,14 +866,14 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
             </div>
 
             {minutesAndPresence.length === 0 ? (
-              <p className="text-gray-400 italic text-sm">Geen data</p>
+              <p className="text-gray-500 italic text-sm">Geen data</p>
             ) : minutesViewMode === 'lijst' ? (
               <div className="space-y-2.5">
                 {minutesAndPresence.map((p, index) => (
                   <div key={p.id} className="flex justify-between items-center gap-2 text-sm">
                     <span className="font-semibold text-gray-700 truncate">{index + 1}. {p.name}</span>
                     <div className="flex flex-wrap justify-end items-center gap-x-2 gap-y-0.5 shrink-0">
-                      <span className="text-xs font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 whitespace-nowrap">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-navy/5 text-navy whitespace-nowrap">
                         {p.minutesPercentage}% gespeeld
                       </span>
                       <span className="text-xs text-gray-500 whitespace-nowrap">
@@ -891,16 +891,16 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                   {minutesAndPresence.map(p => (
                     <div key={p.id} className="flex flex-col items-center w-16 shrink-0">
                       <div className="flex flex-col items-center justify-end" style={{ height: '120px' }}>
-                        <span className="text-[10px] font-bold text-blue-700 mb-1">{p.minutesPercentage}%</span>
+                        <span className="font-display text-base font-bold text-navy leading-none tabular-nums mb-1">{p.minutesPercentage}%</span>
                         <div
-                          className="w-8 bg-blue-500 rounded-t-md"
+                          className="w-8 bg-navy rounded-t-md"
                           style={{ height: `${Math.min(100, Math.max(4, p.minutesPercentage))}px` }}
                         />
                       </div>
                       <div className="mt-2 text-center">
-                        <p className="text-[10px] font-bold text-gray-700 truncate w-16">{p.name}</p>
-                        <p className="text-[9px] text-gray-400 leading-tight">{p.minutesTotal}min</p>
-                        <p className="text-[9px] text-gray-400 leading-tight">{p.matchesPresent} wedstr.</p>
+                        <p className="text-xs font-semibold text-gray-700 truncate w-16">{p.name}</p>
+                        <p className="text-[11px] text-gray-500 leading-tight">{p.minutesTotal}min</p>
+                        <p className="text-[11px] text-gray-500 leading-tight">{p.matchesPresent} wedstr.</p>
                       </div>
                     </div>
                   ))}
@@ -911,12 +911,12 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
 
           {/* Speelminuten per positie: per speler (tabs) de visuele veldopstelling, met per
               positie hoeveel minuten (en welk aandeel van zijn totale speeltijd) hij daar stond. */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-            <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-              <Clock size={18} className="text-[#04174C]" /> Speelminuten per positie
+          <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+            <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
+              <Clock size={18} className="text-navy/40" /> Speelminuten per positie
             </div>
             {minutesAndPresence.length === 0 ? (
-              <p className="text-gray-400 italic text-sm">Geen data</p>
+              <p className="text-gray-500 italic text-sm">Geen data</p>
             ) : (
               <>
                 <div className="overflow-x-auto -mx-1 px-1 mb-4">
@@ -925,8 +925,8 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                       <button
                         key={p.id}
                         onClick={() => setSelectedPositionPlayerId(p.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
-                          selectedPositionPlayer?.id === p.id ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-500'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                          selectedPositionPlayer?.id === p.id ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         {p.name}
@@ -960,20 +960,20 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                               key={pos}
                               className={`w-20 py-2 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 ${wingOffset} ${
                                 isTopPosition
-                                  ? 'border-amber-400 shadow-md shadow-amber-200'
+                                  ? 'border-volt shadow-md shadow-volt/40'
                                   : minutes > 0
-                                  ? 'border-blue-900/10'
+                                  ? 'border-navy/10'
                                   : 'border-dashed border-gray-200 bg-white/60'
                               }`}
                               style={minutes > 0 ? { backgroundColor: heatmapColor(pct) } : undefined}
                             >
                               {minutes > 0 ? (
                                 <>
-                                  <span className={`text-xs font-bold ${darkCell ? 'text-white' : 'text-[#04174C]'}`}>{minutes}min</span>
-                                  <span className={`text-[9px] ${darkCell ? 'text-blue-100' : 'text-gray-500'}`}>{pct}%</span>
+                                  <span className={`text-xs font-bold ${darkCell ? 'text-white' : 'text-navy'}`}>{minutes}min</span>
+                                  <span className={`text-[11px] ${darkCell ? 'text-white/70' : 'text-gray-500'}`}>{pct}%</span>
                                 </>
                               ) : (
-                                <span className="text-gray-300 text-sm font-bold">—</span>
+                                <span className="text-gray-400 text-sm font-bold">—</span>
                               )}
                             </div>
                           );
@@ -989,9 +989,9 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
           {/* Spelers per positie: het omgekeerde perspectief van hierboven — per positie (tabs)
               welke spelers daar stonden, met hun minuten en aandeel t.o.v. alle minuten die op
               die positie gespeeld werden (door om het even wie). */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-            <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-              <Users size={18} className="text-[#04174C]" /> Spelers per positie
+          <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+            <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
+              <Users size={18} className="text-navy/40" /> Spelers per positie
             </div>
 
             <div className="overflow-x-auto -mx-1 px-1 mb-4">
@@ -1001,8 +1001,8 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                     key={pos}
                     onClick={() => setSelectedPositionTab(pos)}
                     title={POSITION_TAB_LABELS[pos].full}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
-                      selectedPositionTab === pos ? 'bg-[#04174C] text-white' : 'bg-gray-100 text-gray-500'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                      selectedPositionTab === pos ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {POSITION_TAB_LABELS[pos].abbr}
@@ -1011,18 +1011,18 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
               </div>
             </div>
 
-            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-3">
+            <p className="text-sm font-medium text-gray-500 mb-3">
               {POSITION_TAB_LABELS[selectedPositionTab].full}
             </p>
 
             {playersForSelectedPosition.length === 0 ? (
-              <p className="text-gray-400 italic text-sm">Geen data</p>
+              <p className="text-gray-500 italic text-sm">Geen data</p>
             ) : (
               <div className="space-y-2.5">
                 {playersForSelectedPosition.map((entry, index) => (
                   <div key={entry.id} className="flex justify-between items-center text-sm gap-2">
                     <span className="font-semibold text-gray-700 truncate">{index + 1}. {entry.name}</span>
-                    <span className="text-xs font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 shrink-0 whitespace-nowrap">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-navy/5 text-navy shrink-0 whitespace-nowrap">
                       {entry.minutes}min ({entry.percentage}%)
                     </span>
                   </div>
@@ -1033,12 +1033,12 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
 
           <StatTabsCard
             title="Verdediging"
-            icon={<Shield size={18} className="text-emerald-500" />}
+            icon={<Shield size={18} className="text-navy/40" />}
             tabs={[
               {
                 key: 'goalsAgainst',
                 label: 'Tegendoelpunten',
-                badgeClassName: 'bg-emerald-50 text-emerald-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: goalsAgainstRows,
                 description:
                   'Om de hoeveel minuten de ploeg gemiddeld een tegendoelpunt krijgt wanneer deze speler in doel of in de verdediging staat. Hoe hoger, hoe beter.',
@@ -1046,7 +1046,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
               {
                 key: 'cleanSheets',
                 label: 'Clean sheets',
-                badgeClassName: 'bg-emerald-50 text-emerald-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: cleanSheetRows,
                 description:
                   'Hoeveel kwarten de ploeg geen tegendoelpunt kreeg wanneer de speler in doel of in de verdediging stond. Hoe hoger, hoe beter.',
@@ -1056,12 +1056,12 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
 
           <StatTabsCard
             title="Aanval"
-            icon={<Target size={18} className="text-yellow-500" />}
+            icon={<Target size={18} className="text-navy/40" />}
             tabs={[
               {
                 key: 'involvement',
                 label: 'Betrokkenheid',
-                badgeClassName: 'bg-yellow-50 text-yellow-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: involvementRows,
                 description:
                   'Om de hoeveel minuten deze speler zelf een doelpunt maakt of een assist geeft, over al zijn speelminuten (op elke positie). Hoe minder minuten, hoe beter.',
@@ -1069,7 +1069,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
               {
                 key: 'teamGoalsInAttack',
                 label: 'Ploeg scoort',
-                badgeClassName: 'bg-yellow-50 text-yellow-700',
+                badgeClassName: 'bg-navy/5 text-navy',
                 rows: teamGoalsInAttackRows,
                 description:
                   'Om de hoeveel minuten de ploeg gemiddeld scoort terwijl deze speler in de aanval staat. Hoe lager, hoe beter.',
@@ -1080,40 +1080,40 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
           {/* --- PER SPELER, PER STATISTIEK --- */}
           <StatTabsCard
             tabs={[
-              { key: 'goals', label: 'Doelpunten', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: goalRows },
-              { key: 'assists', label: 'Assists', badgeClassName: 'bg-yellow-50 text-yellow-700', rows: assistRows },
-              { key: 'tackles', label: 'Tackles', badgeClassName: 'bg-blue-50 text-blue-700', rows: tackleRows },
-              { key: 'saves', label: 'Reddingen', badgeClassName: 'bg-green-50 text-green-700', rows: saveRows },
+              { key: 'goals', label: 'Doelpunten', badgeClassName: 'bg-navy/5 text-navy', rows: goalRows },
+              { key: 'assists', label: 'Assists', badgeClassName: 'bg-navy/5 text-navy', rows: assistRows },
+              { key: 'tackles', label: 'Tackles', badgeClassName: 'bg-navy/5 text-navy', rows: tackleRows },
+              { key: 'saves', label: 'Reddingen', badgeClassName: 'bg-navy/5 text-navy', rows: saveRows },
             ]}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Target size={18} className="text-green-500" /> Doelpunten voor, per type
+            <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+              <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
+                <Target size={18} className="text-navy/40" /> Doelpunten voor, per type
               </div>
               <div className="space-y-2">
                 {sortWithUnknownLast(team.goalsForByType).map(t => (
                   <div key={t.type} className="flex justify-between items-center text-sm">
-                    <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-green-50 text-green-700'}`}>{t.count}</span>
+                    <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-500' : 'text-gray-700'}`}>{t.label}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-500' : 'bg-volt-soft text-volt-ink'}`}>{t.count}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-              <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                <Target size={18} className="text-red-500" /> Doelpunten tegen, per type
+            <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-navy/5">
+              <div className="flex items-center gap-2 mb-4 text-base font-semibold text-navy">
+                <Target size={18} className="text-navy/40" /> Doelpunten tegen, per type
               </div>
               <div className="space-y-2">
                 {team.goalsAgainstByType.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">Geen data</p>
+                  <p className="text-gray-500 italic text-sm">Geen data</p>
                 ) : (
                   sortWithUnknownLast(team.goalsAgainstByType).map(t => (
                     <div key={t.type} className="flex justify-between items-center text-sm">
-                      <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-400' : 'text-gray-700'}`}>{t.label}</span>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-700'}`}>{t.count}</span>
+                      <span className={`font-semibold ${t.type === 'onbekend' ? 'text-gray-500' : 'text-gray-700'}`}>{t.label}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${t.type === 'onbekend' ? 'bg-gray-100 text-gray-500' : 'bg-red-50 text-red-700'}`}>{t.count}</span>
                     </div>
                   ))
                 )}
@@ -1121,7 +1121,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
             </div>
           </div>
 
-          <Leaderboard title="Blessures" icon={<Bandage size={18} className="text-orange-500" />} entries={injuryEntries} unit="keer" badgeClassName="bg-orange-50 text-orange-700" />
+          <Leaderboard title="Blessures" icon={<Bandage size={18} className="text-navy/40" />} entries={injuryEntries} unit="keer" badgeClassName="bg-orange-50 text-orange-700" />
         </>
       )}
     </div>

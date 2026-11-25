@@ -166,7 +166,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${view === 'dashboard' ? 'bg-[#04174C]/5' : 'bg-gray-50'} pb-24`}>
+    <div className={`min-h-screen ${view === 'dashboard' ? 'bg-navy/5' : 'bg-gray-50'} pb-24`}>
       {view === 'dashboard' && (
         <Dashboard
           players={players}

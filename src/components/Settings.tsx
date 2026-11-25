@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, User, Users, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
+import { Plus, Trash2, User, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Player, Game } from '../types';
 import { db } from '../firebase';
@@ -31,14 +31,14 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
     <div
       // Klik op de achtergrond sluit de modal
       onClick={onClose}
-      className="fixed inset-0 bg-[#04174C]/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 cursor-pointer"
+      className="fixed inset-0 bg-navy/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 cursor-pointer"
     >
       <div
         // StopPropagation voorkomt dat klikken OP de kaart de modal sluit
         onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative border-4 border-white cursor-default"
       >
-        <div className="bg-gradient-to-br from-[#04174C] to-[#052A6B] p-8 text-center relative">
+        <div className="bg-gradient-to-br from-navy to-navy-light p-8 text-center relative">
           <button
             onClick={onClose}
             className="absolute top-4 end-4 text-white/50 hover:text-white transition-colors p-2"
@@ -46,37 +46,37 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <X size={24} />
           </button>
           <div className="w-20 h-20 bg-white/10 rounded-full mx-auto mb-4 flex items-center justify-center border-2 border-white/20">
-            <Star size={40} className="text-yellow-400 fill-yellow-400" />
+            <Star size={40} className="text-volt fill-volt" />
           </div>
-          <h3 className="text-2xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-          <p className="text-blue-300 text-[10px] font-bold uppercase tracking-[0.2em]">{t('team.playerSubtitle')}</p>
+          <h3 className="font-display text-3xl font-bold text-white leading-none">{player.name}</h3>
+          <p className="mt-1.5 text-white/60 text-xs font-medium">{t('team.playerSubtitle')}</p>
         </div>
 
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <Gamepad2 size={16} className="text-blue-500 mb-1" />
-            <div className="text-xl font-black text-[#04174C]">{stats.matches}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.matches')}</div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
+            <Gamepad2 size={16} className="text-navy/40 mb-1" />
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.matches}</div>
+            <div className="mt-1 text-xs font-medium text-gray-500">{t('team.matches')}</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <Target size={16} className="text-green-500 mb-1" />
-            <div className="text-xl font-black text-[#04174C]">{stats.goals}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.goals')}</div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
+            <Target size={16} className="text-navy/40 mb-1" />
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.goals}</div>
+            <div className="mt-1 text-xs font-medium text-gray-500">{t('team.goals')}</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <Handshake size={16} className="text-yellow-500 mb-1" />
-            <div className="text-xl font-black text-[#04174C]">{stats.assists}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.assists')}</div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
+            <Handshake size={16} className="text-navy/40 mb-1" />
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.assists}</div>
+            <div className="mt-1 text-xs font-medium text-gray-500">{t('team.assists')}</div>
           </div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <Axe size={16} className="text-red-500 mb-1" />
-            <div className="text-xl font-black text-[#04174C]">{stats.tackles}</div>
-            <div className="text-[8px] font-black text-gray-400 uppercase">{t('team.tackles')}</div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
+            <Axe size={16} className="text-navy/40 mb-1" />
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.tackles}</div>
+            <div className="mt-1 text-xs font-medium text-gray-500">{t('team.tackles')}</div>
           </div>
           {stats.saves > 0 && (
-            <div className="col-span-2 bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center gap-4">
-              <Shield size={16} className="text-purple-500" />
-              <div className="text-sm font-black text-[#04174C]">{t('plurals.saves', { count: stats.saves })}</div>
+            <div className="col-span-2 bg-white p-3 rounded-2xl shadow-sm ring-1 ring-navy/5 flex items-center justify-center gap-4">
+              <Shield size={16} className="text-navy/40" />
+              <div className="text-sm font-semibold text-navy">{t('plurals.saves', { count: stats.saves })}</div>
             </div>
           )}
         </div>
@@ -133,38 +133,38 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
 
   return (
     <div className="max-w-2xl mx-auto p-4 pb-32 space-y-6 select-none">
-      <header className="flex items-center gap-2 px-1">
-        <Users className="text-[#04174C]" size={24} />
-        <h2 className="text-2xl font-black text-[#04174C] tracking-tight">{t('team.title')}</h2>
+      <header className="flex items-center gap-2.5 px-1 pt-2">
+        <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
+        <h2 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">{t('team.title')}</h2>
       </header>
 
       {/* Input Speler (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
-        <section dir="ltr" lang="nl" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Nieuwe speler</h3>
+        <section dir="ltr" lang="nl" className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5">
+          <h3 className="text-base font-semibold text-navy mb-3">Nieuwe speler</h3>
           <div className="flex gap-2">
             <input
               value={playerName}
               onChange={e => setPlayerName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addPlayer()}
               placeholder="Naam van de speler..."
-              className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#04174C]/10 transition-all"
+              className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-navy/10 transition-all"
             />
             <button
               onClick={() => setNewPlayerIsKeeper(!newPlayerIsKeeper)}
               title="Keeper"
-              className={`px-3 rounded-xl transition-all flex items-center justify-center ${newPlayerIsKeeper ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-50 text-gray-400'}`}
+              className={`px-3 rounded-xl transition-all flex items-center justify-center ${newPlayerIsKeeper ? 'bg-navy text-white shadow-sm' : 'bg-gray-100 text-gray-500'}`}
             >
               <Hand size={18} />
             </button>
             <button
               onClick={() => setNewPlayerIsGuest(!newPlayerIsGuest)}
               title="Gastspeler (telt niet mee in Inzichten)"
-              className={`px-3 rounded-xl text-[10px] font-black uppercase transition-all ${newPlayerIsGuest ? 'bg-gray-50 text-blue-600' : 'bg-gray-50 text-gray-400'}`}
+              className={`px-3 rounded-xl text-xs font-semibold transition-all ${newPlayerIsGuest ? 'bg-gray-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}
             >
               Gast
             </button>
-            <button onClick={addPlayer} className="bg-[#04174C] text-white px-4 rounded-xl shadow-lg active:scale-95 transition-all">
+            <button onClick={addPlayer} className="bg-navy text-white px-4 rounded-xl shadow-sm active:scale-95 transition-all">
               <Plus size={20} strokeWidth={3} />
             </button>
           </div>
@@ -172,25 +172,25 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
       )}
 
       {/* Lijst van spelers */}
-      <section className="space-y-4">
+      <section className="space-y-3">
         {/* Vaste spelers eerst, gastspelers achteraan */}
         {[...players].sort((a, b) => Number(!!a.isGuest) - Number(!!b.isGuest) || a.name.localeCompare(b.name)).map(player => (
           <div
             key={player.id}
             onClick={() => setSelectedPlayer(player)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group"
+            className="bg-white rounded-2xl shadow-sm ring-1 ring-navy/5 overflow-hidden cursor-pointer group hover:ring-navy/15 transition-shadow"
           >
             <div className="p-4 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white border-2 border-blue-100 rounded-full flex items-center justify-center text-[#04174C] shadow-sm group-hover:border-blue-400 transition-colors">
+                <div className="w-10 h-10 bg-navy/5 rounded-full flex items-center justify-center text-navy group-hover:bg-volt transition-colors">
                   <User size={20} />
                 </div>
-                <span className="font-bold text-[#04174C]">{player.name}</span>
+                <span className="font-semibold text-navy">{player.name}</span>
                 {player.isGuest && !isAdminMode && (
-                  <span className="text-[9px] font-black uppercase tracking-wider text-blue-500">{t('team.guest')}</span>
+                  <span className="text-xs font-semibold text-blue-500">{t('team.guest')}</span>
                 )}
                 {player.isKeeper && !isAdminMode && (
-                  <Hand size={14} className="text-blue-500" />
+                  <Hand size={14} className="text-navy/40" />
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleKeeper(player.id, player.isKeeper); }}
                     title="Keeper"
-                    className={`p-2 rounded-lg transition-colors ${player.isKeeper ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-blue-500'}`}
+                    className={`p-2 rounded-lg transition-colors ${player.isKeeper ? 'bg-navy text-white' : 'text-gray-400 hover:text-navy'}`}
                   >
                     <Hand size={18} />
                   </button>
@@ -207,7 +207,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleGuest(player.id, player.isGuest); }}
                     title="Gastspeler (telt niet mee in Inzichten)"
-                    className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-colors ${player.isGuest ? 'text-blue-600' : 'text-gray-300 hover:text-blue-500'}`}
+                    className={`px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors ${player.isGuest ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500'}`}
                   >
                     Gast
                   </button>
@@ -215,7 +215,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                 {isAdminMode && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setConfirm({ id: player.id, name: player.name }); }}
-                    className="text-gray-300 hover:text-red-500 transition-colors p-2"
+                    className="text-gray-400 hover:text-red-500 transition-colors p-2"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -235,11 +235,11 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={28} />
             </div>
-            <h3 className="text-lg font-black text-[#04174C] mb-2">{confirm.name} verwijderen?</h3>
+            <h3 className="text-lg font-semibold text-navy mb-2">{confirm.name} verwijderen?</h3>
             <p className="text-xs text-gray-500 mb-6">Deze actie kan niet ongedaan worden gemaakt.</p>
             <div className="flex gap-3">
-              <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setConfirm(null)}>Nee</button>
-              <button className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100" onClick={() => {
+              <button className="flex-1 py-3 font-semibold text-gray-500" onClick={() => setConfirm(null)}>Nee</button>
+              <button className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold shadow-sm" onClick={() => {
                 removePlayer(confirm.id);
                 setConfirm(null);
               }}>Ja</button>

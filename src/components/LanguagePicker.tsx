@@ -9,7 +9,7 @@ export const LanguagePicker: React.FC = () => {
   const { t, i18n } = useTranslation();
 
   return (
-    <label className="relative flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/70 border border-[#04174C]/10 text-[#04174C]/60 text-[10px] font-black uppercase tracking-widest cursor-pointer shrink-0">
+    <label className="relative flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-navy/10 text-navy/70 text-xs font-semibold uppercase cursor-pointer shrink-0">
       <Globe size={12} />
       {i18n.language}
       <select

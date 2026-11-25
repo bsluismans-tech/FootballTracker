@@ -142,32 +142,32 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, curren
           Bij de allereerste, nog lege opstelling van een kwart is er nog geen kwart aan de gang
           (de klok start pas als de opstelling bevestigd wordt), dus tonen we hier niets. */}
       {canCancel && (
-        <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8 relative">
+        <div className="bg-navy text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8 relative">
           <div className="text-center flex-1">
-            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+            <p className="text-sm font-medium text-white/60 truncate max-w-[100px] mx-auto">
               {leftName}
             </p>
-            <p className="text-3xl font-black tabular-nums">{leftScore}</p>
+            <p className="font-display text-5xl font-bold leading-none tabular-nums">{leftScore}</p>
           </div>
-          <div className="text-xl font-black opacity-20 px-4">-</div>
+          <div className="font-display text-2xl font-bold text-white/20 px-4">–</div>
           <div className="text-center flex-1">
-            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+            <p className="text-sm font-medium text-white/60 truncate max-w-[100px] mx-auto">
               {rightName}
             </p>
-            <p className="text-3xl font-black tabular-nums">{rightScore}</p>
+            <p className="font-display text-5xl font-bold leading-none tabular-nums">{rightScore}</p>
           </div>
-          <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-md px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
-            <Clock size={11} /> {formatMinute(getCurrentMinute())}
+          <div className="absolute -top-2 -right-2 bg-volt text-navy rounded-md px-2.5 py-1 shadow-md flex items-center gap-1 font-display text-base font-bold tabular-nums leading-none">
+            <Clock size={13} /> {formatMinute(getCurrentMinute())}
           </div>
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-[#04174C]/20">
+      <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5">
         {/* ANNULEREN (rechtsboven, consistent met de andere stappen) — enkel zichtbaar als je
             hier via "Opstelling wijzigen" zit, niet bij de allereerste, nog lege opstelling. */}
         {canCancel && (
           <div className="flex justify-end mb-2">
-            <button onClick={onCancel} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">
+            <button onClick={onCancel} className="text-gray-500 text-sm font-semibold min-h-11 px-2 -my-2">
               Annuleren
             </button>
           </div>
@@ -195,16 +195,16 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, curren
                     onClick={() => handleSlotTap(pos)}
                     className={`w-20 h-11 rounded-xl border-2 flex flex-col items-center justify-center text-center px-1 transition-all active:scale-95 ${wingOffset} ${
                       isFocused
-                        ? 'border-[#04174C] bg-[#04174C] shadow-lg scale-105'
+                        ? 'border-volt bg-navy shadow-lg scale-105'
                         : name
-                        ? 'border-[#04174C]/40 bg-white'
+                        ? 'border-navy/40 bg-white'
                         : 'border-dashed border-gray-300 bg-white/60'
                     }`}
                   >
-                    <span className={`text-[8px] font-black uppercase tracking-widest ${isFocused ? 'text-white/70' : 'text-gray-400'}`}>
+                    <span className={`text-[11px] font-medium leading-tight ${isFocused ? 'text-white/70' : 'text-gray-500'}`}>
                       {POSITION_SHORT_LABELS[pos]}
                     </span>
-                    <span className={`text-xs font-bold truncate max-w-full ${isFocused ? 'text-white' : name ? 'text-[#04174C]' : 'text-gray-300'}`}>
+                    <span className={`text-xs font-bold truncate max-w-full ${isFocused ? 'text-white' : name ? 'text-navy' : 'text-gray-400'}`}>
                       {name || '—'}
                     </span>
                   </button>
@@ -220,9 +220,9 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, curren
             <button
               key={p.id}
               onClick={() => handlePlayerTap(p.id)}
-              className="h-11 px-1 rounded-lg text-[11px] font-bold text-center flex items-center justify-center gap-1 leading-tight transition active:scale-95 bg-gray-100 text-gray-600 truncate"
+              className="h-12 px-1 rounded-lg text-sm font-semibold text-center flex items-center justify-center gap-1 leading-tight transition active:scale-95 bg-gray-100 text-navy truncate"
             >
-              {p.isKeeper && focusedPosition === 'keeper' && <Hand size={11} className="text-blue-500 shrink-0" />}
+              {p.isKeeper && focusedPosition === 'keeper' && <Hand size={12} className="text-navy/50 shrink-0" />}
               <span className="truncate">{p.name}</span>
             </button>
           ))}

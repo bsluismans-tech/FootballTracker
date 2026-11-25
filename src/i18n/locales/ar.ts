@@ -15,11 +15,11 @@ export const ar: Locale = {
     quarter: 'الربع {{number}}',
   },
   scoreboard: {
-    live: '● مباشر',
+    live: 'مباشر',
     lastMatch: 'آخر مباراة',
-    won: 'فوز 🎉',
-    lost: 'خسارة ⚽️',
-    draw: 'تعادل 🤝',
+    won: 'فوز',
+    lost: 'خسارة',
+    draw: 'تعادل',
     minuteUnit: 'د',
   },
   dashboard: {

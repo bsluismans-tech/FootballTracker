@@ -2,9 +2,9 @@ import type { Locale } from './nl';
 
 export const en: Locale = {
   nav: {
-    start: 'HOME',
-    matches: 'MATCHES',
-    team: 'TEAM',
+    start: 'Home',
+    matches: 'Matches',
+    team: 'Team',
   },
   language: {
     label: 'Language',
@@ -14,11 +14,11 @@ export const en: Locale = {
     quarter: 'Quarter {{number}}',
   },
   scoreboard: {
-    live: '● Live',
+    live: 'Live',
     lastMatch: 'Last match',
-    won: 'WON 🎉',
-    lost: 'LOST ⚽️',
-    draw: 'DRAW 🤝',
+    won: 'Won',
+    lost: 'Lost',
+    draw: 'Draw',
     minuteUnit: 'min',
   },
   dashboard: {

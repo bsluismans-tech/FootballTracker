@@ -136,11 +136,18 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   const sortedTackles = Object.entries(tacklesByPlayer).map(([id, count]) => ({ id: parseInt(id), count })).sort((a, b) => b.count - a.count).slice(0, 3);
   const topKeepers = Object.entries(savesByKeeper).map(([id, saves]) => ({ id: parseInt(id), saves })).sort((a, b) => b.saves - a.saves).slice(0, 3);
 
+  // Eén vaste stijl voor alle lichte kaarten op het startscherm.
+  const card = 'bg-white rounded-2xl shadow-sm ring-1 ring-navy/5';
+  const cardLabel = 'flex items-center gap-1.5 text-sm font-medium text-gray-500';
+
   return (
-    <div className={`max-w-2xl mx-auto p-4 select-none space-y-6 ${isAdminMode ? 'pb-48' : 'pb-32'}`}>
+    <div className={`max-w-2xl mx-auto p-4 select-none space-y-5 ${isAdminMode ? 'pb-48' : 'pb-32'}`}>
       {/* Header */}
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-black text-[#04174C] tracking-tight text-start leading-none uppercase">U10 Kaulille</h1>
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
+          <h1 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">U10 Kaulille</h1>
+        </div>
         <LanguagePicker />
       </div>
 
@@ -153,12 +160,12 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           >
             <LiveScoreboard game={liveGame} isLive={true} />
             {liveViewerCount != null && liveViewerCount > 0 && (
-              <p className="flex items-center justify-center gap-1 text-[9px] text-[#04174C]/30 font-bold uppercase tracking-widest mt-2">
-                <Eye size={10} /> {t('plurals.viewers', { count: liveViewerCount })}
+              <p className="flex items-center justify-center gap-1 text-xs text-gray-500 font-medium mt-2">
+                <Eye size={13} /> {t('plurals.viewers', { count: liveViewerCount })}
               </p>
             )}
             {isAdminMode && (
-              <p dir="ltr" lang="nl" className="text-center text-[9px] text-blue-500 font-black uppercase tracking-widest mt-2">
+              <p dir="ltr" lang="nl" className="text-center text-xs text-navy/70 font-semibold mt-2">
                 Tik om de wedstrijd verder te registreren
               </p>
             )}
@@ -171,54 +178,53 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             <LiveScoreboard game={lastFinishedGame} isLive={false} />
           </div>
         ) : (
-          <div className="bg-white border-2 border-dashed border-gray-100 rounded-2xl p-8 text-center">
-            <Trophy className="mx-auto text-gray-200 mb-2" size={32} />
-            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{t('dashboard.noData')}</p>
+          <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
+            <Trophy className="mx-auto text-gray-300 mb-2" size={32} />
+            <p className="text-gray-500 text-sm font-medium">{t('dashboard.noData')}</p>
           </div>
         )}
       </section>
-      
+
       <div className="grid gap-4">
         {/* Top Rij: Balans, Vorm en Saldo */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 bg-white p-4 rounded-2xl shadow-sm border border-blue-50 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center gap-2 mb-3 text-[#04174C] font-bold uppercase text-[10px] tracking-wider opacity-60">
-              <Activity size={14} /> {t('dashboard.resultsForm')}
+          <div className={`col-span-2 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
+            <div className={`${cardLabel} mb-3`}>
+              <Activity size={15} className="text-navy/40" /> {t('dashboard.resultsForm')}
             </div>
-            
-            <div className="flex items-center gap-4 mb-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-sm font-black text-[#04174C]">{stats.wins}{t('dashboard.winShort')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                <span className="text-sm font-black text-[#04174C]">{stats.draws}{t('dashboard.drawShort')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <span className="text-sm font-black text-[#04174C]">{stats.losses}{t('dashboard.lossShort')}</span>
-              </div>
+
+            <div className="flex items-baseline gap-4 mb-2">
+              {[
+                { value: stats.wins, label: t('dashboard.winShort') },
+                { value: stats.draws, label: t('dashboard.drawShort') },
+                { value: stats.losses, label: t('dashboard.lossShort') },
+              ].map((item, i) => (
+                <span key={i} className="flex items-baseline gap-0.5">
+                  <span className="font-display text-3xl font-bold text-navy leading-none tabular-nums">{item.value}</span>
+                  <span className="text-sm font-semibold text-gray-400">{item.label}</span>
+                </span>
+              ))}
             </div>
 
             {/* pt-1.5 erbij (naast pb-1): overflow-x-auto laat de Y-as ook clippen, dus zonder
                 wat ruimte bovenaan werd de ring van het meest recente bolletje afgesneden. */}
             <div className="flex items-center justify-start overflow-x-auto pt-1.5 pb-1">
               {games.length === 0 ? (
-                <span className="text-[10px] text-gray-400 italic font-medium">{t('dashboard.noFormData')}</span>
+                <span className="text-xs text-gray-500 font-medium">{t('dashboard.noFormData')}</span>
               ) : (
                 lastFiveGames.map((game, i) => {
                   const isMostRecent = i === lastFiveGames.length - 1;
+                  const result = getResult(game);
                   return (
                     <div
                       key={i}
-                      className={`w-6 h-6 text-[10px] rounded-full flex items-center justify-center text-white shrink-0 font-bold transition-all ${
-                        getResult(game) === 'W' ? 'bg-green-500' : getResult(game) === 'L' ? 'bg-red-500' : 'bg-gray-400'
+                      className={`w-7 h-7 text-xs rounded-full flex items-center justify-center shrink-0 font-bold transition-all ${
+                        result === 'W' ? 'bg-volt text-navy' : result === 'L' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'
                       } ${i !== 0 ? 'ms-1.5' : ''} ${
-                        isMostRecent ? 'ring-2 ring-offset-2 ring-[#04174C]/40 shadow-md' : ''
+                        isMostRecent ? 'ring-2 ring-offset-2 ring-navy/30' : ''
                       }`}
                     >
-                      {t(`dashboard.form${{ W: 'Win', L: 'Loss', D: 'Draw' }[getResult(game)]}`)}
+                      {t(`dashboard.form${{ W: 'Win', L: 'Loss', D: 'Draw' }[result]}`)}
                     </div>
                   );
                 })
@@ -226,53 +232,49 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             </div>
           </div>
 
-          <div className="col-span-1 bg-white p-4 rounded-2xl shadow-sm border border-blue-50 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center gap-2 mb-1 text-[#04174C] font-bold uppercase text-[10px] tracking-wider opacity-60">
-              <Target size={14} /> {t('dashboard.goalDiff')}
+          <div className={`col-span-1 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
+            <div className={`${cardLabel} mb-1`}>
+              <Target size={15} className="text-navy/40" /> {t('dashboard.goalDiff')}
             </div>
             <div>
-              <div className="text-2xl font-black text-[#04174C] leading-none">
+              <div className={`font-display text-4xl font-bold leading-none tabular-nums ${goalDiff > 0 ? 'text-volt-ink' : goalDiff < 0 ? 'text-red-600' : 'text-navy'}`}>
                 {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
               </div>
-              <div className="text-[9px] text-gray-400 font-bold mt-1 leading-tight tracking-tight">
-                {stats.goalsFor} <span className="text-gray-300">{t('dashboard.goalsFor')}</span> {stats.goalsAgainst} <span className="text-gray-300">{t('dashboard.goalsAgainst')}</span>
+              <div className="text-xs text-gray-500 font-medium mt-1 leading-tight">
+                {stats.goalsFor} {t('dashboard.goalsFor')} · {stats.goalsAgainst} {t('dashboard.goalsAgainst')}
               </div>
             </div>
           </div>
         </div>
 
         {/* --- TEAM STATS SECTIE --- */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-50 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-8 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-            <Users size={18} className="text-blue-500" /> {t('dashboard.teamStats')}
+        <div className={`${card} p-5`}>
+          <div className={`${cardLabel} mb-5`}>
+            <Users size={15} className="text-navy/40" /> {t('dashboard.teamStats')}
           </div>
 
-          <div className="grid grid-cols-3 gap-y-8 gap-x-2 relative z-10">
+          <div className="grid grid-cols-3 gap-y-6 gap-x-2">
             {[
-              { label: t('dashboard.matches'), value: finishedGames.length, icon: <Gamepad2 size={16} />, color: 'text-blue-500' },
-              { label: t('dashboard.goals'), value: stats.goalsFor, icon: <Target size={16} />, color: 'text-yellow-500' },
-              { label: t('dashboard.assists'), value: stats.totalAssists, icon: <Handshake size={16} />, color: 'text-yellow-500' },
-              { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={16} />, color: 'text-blue-400' },
-              { label: t('dashboard.saves'), value: stats.totalSaves, icon: <Shield size={16} />, color: 'text-emerald-500' },
-              { label: t('dashboard.fun'), value: '100%', icon: <Smile size={16} />, color: 'text-pink-500' },
+              { label: t('dashboard.matches'), value: finishedGames.length, icon: <Gamepad2 size={14} /> },
+              { label: t('dashboard.goals'), value: stats.goalsFor, icon: <Target size={14} /> },
+              { label: t('dashboard.assists'), value: stats.totalAssists, icon: <Handshake size={14} /> },
+              { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={14} /> },
+              { label: t('dashboard.saves'), value: stats.totalSaves, icon: <Shield size={14} /> },
+              { label: t('dashboard.fun'), value: '100%', icon: <Smile size={14} /> },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-2xl font-black text-[#04174C] tabular-nums tracking-tight">
-                    {item.value}
-                  </span>
-                  <div className={`${item.color} opacity-60`}>
-                    {item.icon}
-                  </div>
-                </div>
-                <span className="text-[9px] uppercase font-black tracking-widest text-gray-400">
+                <span className="font-display text-4xl font-bold text-navy leading-none tabular-nums">
+                  {item.value}
+                </span>
+                <span className="mt-1 flex items-center gap-1 text-xs font-medium text-gray-500">
+                  <span className="text-navy/30">{item.icon}</span>
                   {item.label}
                 </span>
               </div>
             ))}
           </div>
         </div>
-        
+
         {/* --- NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) ---
             Vast onderaan het scherm, net boven de navigatiebalk, zonder achtergrond: de rest van
             de pagina scrollt erachter door. De wrapper laat klikken door (pointer-events-none),
@@ -285,10 +287,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
                 lang="nl"
                 onClick={startNewGame}
                 disabled={!canStart}
-                className="pointer-events-auto w-full bg-[#04174C] text-white py-4 rounded-2xl shadow-xl hover:bg-[#052A6B] disabled:bg-gray-200 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                className="pointer-events-auto w-full bg-volt text-navy py-4 rounded-2xl shadow-xl shadow-navy/20 hover:brightness-95 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
-                <Plus size={22} strokeWidth={3} />
-                <span className="font-black uppercase tracking-[0.2em] text-sm">Nieuwe wedstrijd</span>
+                <Plus size={22} strokeWidth={2.75} />
+                <span className="font-display text-xl font-bold uppercase tracking-wide">Nieuwe wedstrijd</span>
               </button>
             </div>
           </div>
@@ -297,79 +299,32 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
         {/* Individuele prestaties (Topschutter, De Muur, Hakbijl, Assistenkoning) - alleen zichtbaar in Admin mode */}
         {isAdminMode && (
           <div dir="ltr" lang="nl" className="contents">
-            {/* Topschutter Lijst */}
-            {sortedScorers.length > 0 && (
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-                <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                  <Trophy size={18} className="text-yellow-500" /> Topschutter
+            {[
+              { title: 'Topschutter', icon: <Trophy size={15} />, items: sortedScorers.map(s => ({ id: s.id, value: s.goals })), unit: 'goals' },
+              { title: 'De Muur', icon: <Shield size={15} />, items: topKeepers.map(k => ({ id: k.id, value: k.saves })), unit: 'saves' },
+              { title: 'Hakbijl', icon: <Axe size={15} />, items: sortedTackles.map(k => ({ id: k.id, value: k.count })), unit: 'tackles' },
+              { title: 'Assistenkoning', icon: <Handshake size={15} />, items: sortedAssists.map(k => ({ id: k.id, value: k.count })), unit: 'assists' },
+            ].filter(list => list.items.length > 0).map(list => (
+              <div key={list.title} className={`${card} p-5`}>
+                <div className={`${cardLabel} mb-3`}>
+                  <span className="text-navy/40">{list.icon}</span> {list.title}
                 </div>
-                <div className="space-y-3">
-                  {sortedScorers.map((scorer, index) => (
-                    <div key={scorer.id} className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(scorer.id)}</span>
-                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">{scorer.goals} goals</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Keepers en tackles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {topKeepers.length > 0 && (
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-                  <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                    <Shield size={18} className="text-green-500" /> De Muur
-                  </div>
-                  <div className="space-y-3">
-                    {topKeepers.map((keeper, index) => (
-                      <div key={keeper.id} className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(keeper.id)}</span>
-                        <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded-lg">
-                          {keeper.saves} saves
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {sortedTackles.length > 0 && (
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-                  <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                    <Axe size={18} className="text-blue-600" /> Hakbijl
-                  </div>
-                  <div className="space-y-3">
-                    {sortedTackles.map((item, index) => (
-                      <div key={item.id} className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
-                        <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
-                          {item.count} tackles
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {sortedAssists.length > 0 && (
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
-                <div className="flex items-center gap-2 mb-4 text-[#04174C] font-bold uppercase text-xs tracking-wider">
-                  <Handshake size={18} className="text-yellow-600" /> Assistenkoning
-                </div>
-                <div className="space-y-3">
-                  {sortedAssists.map((item, index) => (
-                    <div key={item.id} className="flex justify-between items-center text-sm">
-                      <span className="font-semibold text-gray-700">{index + 1}. {getPlayerName(item.id)}</span>
-                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">
-                        {item.count} assists
+                <div className="divide-y divide-gray-100">
+                  {list.items.map((item, index) => (
+                    <div key={item.id} className="flex items-center gap-3 py-2">
+                      <span className={`w-6 h-6 rounded-md flex items-center justify-center font-display text-base font-bold ${index === 0 ? 'bg-volt text-navy' : 'bg-gray-100 text-gray-500'}`}>
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 font-medium text-gray-800">{getPlayerName(item.id)}</span>
+                      <span className="flex items-baseline gap-1">
+                        <span className="font-display text-2xl font-bold text-navy tabular-nums leading-none">{item.value}</span>
+                        <span className="text-xs text-gray-500">{list.unit}</span>
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
@@ -383,10 +338,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           className={`max-w-[70px] object-contain transition-all duration-500 cursor-pointer ${isAdminMode ? '' : 'opacity-40 grayscale hover:grayscale-0'}`}
         />
         <div className="flex flex-col items-center">
-          <p className="text-[10px] text-[#04174C]/30 font-black uppercase tracking-[0.2em]">U10 Kaulille FC</p>
-          <p className="text-[9px] text-[#04174C]/20 font-bold uppercase tracking-widest mt-0.5">{t('dashboard.season', { season: getSeasonId() })}</p>
+          <p className="font-display text-sm font-semibold uppercase tracking-wider text-navy/40">U10 Kaulille FC</p>
+          <p className="text-xs text-navy/40 font-medium mt-0.5">{t('dashboard.season', { season: getSeasonId() })}</p>
           {isAdminMode && (
-            <p dir="ltr" lang="nl" className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-1">Admin mode actief</p>
+            <p dir="ltr" lang="nl" className="mt-1.5 text-xs font-semibold text-volt-ink bg-volt-soft px-2 py-0.5 rounded-md">Admin mode actief</p>
           )}
         </div>
       </div>

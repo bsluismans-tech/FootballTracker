@@ -2,9 +2,9 @@ import type { Locale } from './nl';
 
 export const fr: Locale = {
   nav: {
-    start: 'ACCUEIL',
-    matches: 'MATCHS',
-    team: 'ÉQUIPE',
+    start: 'Accueil',
+    matches: 'Matchs',
+    team: 'Équipe',
   },
   language: {
     label: 'Langue',
@@ -14,11 +14,11 @@ export const fr: Locale = {
     quarter: 'Quart-temps {{number}}',
   },
   scoreboard: {
-    live: '● En direct',
+    live: 'En direct',
     lastMatch: 'Dernier match',
-    won: 'GAGNÉ 🎉',
-    lost: 'PERDU ⚽️',
-    draw: 'MATCH NUL 🤝',
+    won: 'Gagné',
+    lost: 'Perdu',
+    draw: 'Match nul',
     minuteUnit: 'min',
   },
   dashboard: {

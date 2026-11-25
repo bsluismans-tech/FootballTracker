@@ -36,23 +36,24 @@ export const MatchReview: React.FC<Props> = ({ currentGame, players, totalGoals,
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-[#04174C]/20 text-center space-y-2">
-        <h3 className="text-3xl font-black text-[#04174C]">{totalGoals} - {totalOpponentGoals}</h3>
-        <p className="font-bold text-gray-500 uppercase tracking-widest text-xs">U9 Kaulille vs {currentGame.opponent || 'Tegenstander'}</p>
-        <div className={`text-sm font-black px-4 py-1 rounded-md inline-block ${totalGoals >= totalOpponentGoals ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{totalGoals > totalOpponentGoals ? 'GEWONNEN 🎉' : totalGoals < totalOpponentGoals ? 'VERLOREN ⚽️' : 'GELIJKSPEL 🤝'}</div>
+      <div className="relative overflow-hidden rounded-2xl p-6 bg-navy text-white shadow-lg text-center space-y-3">
+        <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-48 h-48 rounded-full bg-volt/10 blur-2xl" />
+        <h3 className="relative font-display text-6xl font-bold leading-none tabular-nums">{totalGoals} - {totalOpponentGoals}</h3>
+        <p className="relative text-sm font-medium text-white/60">U10 Kaulille vs {currentGame.opponent || 'Tegenstander'}</p>
+        <div className={`relative text-sm font-semibold px-3 py-1 rounded-md inline-block ${totalGoals > totalOpponentGoals ? 'bg-volt text-navy' : totalGoals < totalOpponentGoals ? 'bg-red-500/20 text-red-200' : 'bg-white/10 text-white/80'}`}>{totalGoals > totalOpponentGoals ? 'Gewonnen' : totalGoals < totalOpponentGoals ? 'Verloren' : 'Gelijkspel'}</div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-yellow-200">
+      <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold flex items-center gap-2 text-yellow-800"><ClipboardEdit size={18} /> Opmerkingen</h3>
+          <h3 className="text-base font-semibold flex items-center gap-2 text-navy"><ClipboardEdit size={18} className="text-navy/50" /> Opmerkingen</h3>
           {wasAiFilled && (
-            <span className="flex items-center gap-1 text-[9px] font-black text-yellow-600 uppercase tracking-widest">
+            <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-volt-soft text-volt-ink">
               <Sparkles size={12} /> AI-suggestie
             </span>
           )}
         </div>
         <textarea
-          className="w-full p-3 border border-yellow-100 rounded-lg bg-yellow-50/30 text-gray-700 outline-none transition-all"
+          className="w-full p-3 border border-navy/10 rounded-lg bg-navy/[0.02] text-gray-700 outline-none focus:ring-2 focus:ring-navy/20 transition-all"
           rows={6}
           placeholder="Matchverslag..."
           value={currentGame.notes || ''}
@@ -61,13 +62,13 @@ export const MatchReview: React.FC<Props> = ({ currentGame, players, totalGoals,
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="mt-3 w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 bg-yellow-500 text-white disabled:opacity-60 active:scale-95 transition-all"
+          className="mt-3 w-full py-3.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 bg-navy text-white disabled:opacity-60 active:scale-95 transition-all"
         >
-          {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} className="text-volt" />}
           {isGenerating ? 'Verslag wordt gegenereerd...' : 'Genereer AI-verslag'}
         </button>
         {generationFailed && (
-          <p className="mt-2 text-[10px] font-bold text-red-500 text-center">
+          <p className="mt-2 text-xs font-medium text-red-600 text-center">
             Kon geen AI-verslag genereren. Probeer het straks opnieuw (zie console voor details).
           </p>
         )}

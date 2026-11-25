@@ -34,66 +34,71 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
   const rightName = game.isAway ? 'Kaulille' : (game.opponent || t('common.opponent'));
   const rightScore = game.isAway ? ourGoals : opponentGoals;
 
+  const resultTone = ourGoals > opponentGoals ? 'win' : ourGoals < opponentGoals ? 'loss' : 'draw';
+
+  // Altijd een donkere "held-kaart" (navy), zowel live als bij de laatste wedstrijd: het
+  // visuele startpunt van het startscherm. Scores in het display-lettertype.
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all duration-500 ${
-      isLive 
-        ? 'bg-[#04174C] text-white border-blue-400 shadow-xl' 
-        : 'bg-white text-[#04174C] border-gray-100 shadow-sm'
+    <div className={`relative overflow-hidden rounded-2xl p-5 bg-navy text-white transition-all duration-500 ${
+      isLive ? 'shadow-xl ring-2 ring-volt/60' : 'shadow-lg'
     }`}>
-      
-      <div className="flex justify-between items-center mb-4">
-        <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest ${
-          isLive ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-500'
+      {/* Subtiel decoratief accent: een vage limoengroene gloed rechtsboven */}
+      <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-48 h-48 rounded-full bg-volt/10 blur-2xl" />
+
+      <div className="relative flex justify-between items-center mb-3">
+        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md ${
+          isLive ? 'bg-red-500 text-white' : 'bg-white/10 text-white/70'
         }`}>
+          {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
           {isLive ? t('scoreboard.live') : t('scoreboard.lastMatch')}
         </span>
 
-        {/* Resultaat Badge (Alleen bij afgeronde wedstrijd) */}
+        {/* Resultaat-badge (alleen bij een afgeronde wedstrijd) */}
         {!isLive && (
-          <div className={`text-[10px] font-black px-4 py-1 rounded-md uppercase tracking-widest ${
-            ourGoals > opponentGoals ? 'bg-green-100 text-green-700' :
-            ourGoals < opponentGoals ? 'bg-red-100 text-red-700' :
-            'bg-gray-100 text-gray-600'
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-md ${
+            resultTone === 'win' ? 'bg-volt text-navy' :
+            resultTone === 'loss' ? 'bg-red-500/20 text-red-200' :
+            'bg-white/10 text-white/80'
           }`}>
-            {ourGoals > opponentGoals ? t('scoreboard.won') :
-             ourGoals < opponentGoals ? t('scoreboard.lost') :
+            {resultTone === 'win' ? t('scoreboard.won') :
+             resultTone === 'loss' ? t('scoreboard.lost') :
              t('scoreboard.draw')}
-          </div>
+          </span>
         )}
       </div>
 
       {/* Altijd thuisploeg links en uitploeg rechts, ook in het Arabisch (zoals op tv). */}
-      <div dir="ltr" className="flex items-center justify-around">
+      <div dir="ltr" className="relative flex items-center justify-around">
         {/* Linker Team */}
-        <div className="text-center flex-1">
-          <p className="text-[10px] font-black uppercase opacity-60 mb-1 truncate max-w-[100px] mx-auto">
+        <div className="text-center flex-1 min-w-0">
+          <p className="text-sm font-medium text-white/60 mb-0.5 truncate max-w-[120px] mx-auto">
             {leftName}
           </p>
-          <p className="text-5xl font-black tabular-nums">{leftScore}</p>
+          <p className="font-display text-7xl font-bold leading-none tabular-nums">{leftScore}</p>
         </div>
-        
+
         {/* Huidig kwart + minuut centraal tussen de scores (alleen tijdens een live wedstrijd) */}
         {isLive && game.currentQuarter ? (
           <div className="flex flex-col items-center px-2 shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+            <span className="text-xs font-medium text-white/60">
               {t('common.quarter', { number: game.currentQuarter })}
             </span>
             {currentMinute != null && (
-              <span className="mt-1 text-lg font-black tabular-nums whitespace-nowrap bg-white/10 px-3 py-0.5 rounded-md">
+              <span className="mt-1 font-display text-xl font-semibold tabular-nums whitespace-nowrap bg-volt text-navy px-3 py-0.5 rounded-md">
                 {formatMinuteLong(currentMinute, t('scoreboard.minuteUnit'))}
               </span>
             )}
           </div>
         ) : (
-          <div className="text-2xl font-black opacity-20 px-4">-</div>
+          <div className="font-display text-4xl font-bold text-white/20 px-4">–</div>
         )}
 
         {/* Rechter Team */}
-        <div className="text-center flex-1">
-          <p className="text-[10px] font-black uppercase opacity-60 mb-1 truncate max-w-[100px] mx-auto">
+        <div className="text-center flex-1 min-w-0">
+          <p className="text-sm font-medium text-white/60 mb-0.5 truncate max-w-[120px] mx-auto">
             {rightName}
           </p>
-          <p className="text-5xl font-black tabular-nums">{rightScore}</p>
+          <p className="font-display text-7xl font-bold leading-none tabular-nums">{rightScore}</p>
         </div>
       </div>
     </div>

@@ -134,14 +134,14 @@ export const MatchPlay: React.FC<Props> = ({
       key: `goal-${i}`,
       type: 'goal',
       index: i,
-      icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
+      icon: <Goal size={14} className="text-volt-ink shrink-0" />,
       text: e.scorerId == null ? (
         <>Goal — <b>Eigen doelpunt tegenstander</b></>
       ) : (
         <>
           Goal <b>{getName(e.scorerId)}</b>
-          {e.assistId != null && <span className="text-gray-400 font-normal"> (Assist: {getName(e.assistId)})</span>}
-          {e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}
+          {e.assistId != null && <span className="text-gray-500 font-normal"> (Assist: {getName(e.assistId)})</span>}
+          {e.goalType && <span className="text-gray-500 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}
         </>
       ),
       label: e.scorerId == null
@@ -153,7 +153,7 @@ export const MatchPlay: React.FC<Props> = ({
       key: `tackle-${i}`,
       type: 'tackle',
       index: i,
-      icon: <Axe size={14} className="text-blue-600 shrink-0" />,
+      icon: <Axe size={14} className="text-navy/50 shrink-0" />,
       text: <>Tackle <b>{getName(e.playerId)}</b></>,
       label: `Tackle ${getName(e.playerId)}`,
     })),
@@ -162,7 +162,7 @@ export const MatchPlay: React.FC<Props> = ({
       key: `save-${i}`,
       type: 'save',
       index: i,
-      icon: <Shield size={14} className="text-emerald-600 shrink-0" />,
+      icon: <Shield size={14} className="text-navy/50 shrink-0" />,
       text: <>Redding <b>{getName(e.playerId)}</b></>,
       label: `Redding ${getName(e.playerId)}`,
     })),
@@ -172,7 +172,7 @@ export const MatchPlay: React.FC<Props> = ({
       type: 'opponentGoal',
       index: i,
       icon: <Target size={14} className="text-red-600 shrink-0" />,
-      text: <>Tegendoelpunt{e.goalType && <span className="text-gray-400 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}</>,
+      text: <>Tegendoelpunt{e.goalType && <span className="text-gray-500 font-normal"> — {GOAL_TYPE_LABELS[e.goalType]}</span>}</>,
       label: `Tegendoelpunt${e.goalType ? ` — ${GOAL_TYPE_LABELS[e.goalType]}` : ''}`,
     })),
     ...(quarter.injuryEvents || []).map((e, i): TimelineEntry => ({
@@ -194,7 +194,7 @@ export const MatchPlay: React.FC<Props> = ({
         <>
           Wissel:{' '}
           <Triangle size={9} className="inline rotate-180 fill-red-500 text-red-500 -translate-y-0.4" /> <b>{getName(s.outId)}</b> -{' '}
-          <Triangle size={9} className="inline fill-green-500 text-green-500 -translate-y-0.4" /> <b>{getName(s.inId)}</b>
+          <Triangle size={9} className="inline fill-volt-ink text-volt-ink -translate-y-0.4" /> <b>{getName(s.inId)}</b>
         </>
       ),
       label: `Wissel: ${getName(s.outId)} uit - ${getName(s.inId)} in`,
@@ -244,22 +244,22 @@ export const MatchPlay: React.FC<Props> = ({
     <div className="space-y-4 animate-in fade-in duration-300">
 
       {/* ALGEMENE SCORE BOVENAAN (THUIS/UIT DYNAMISCH) */}
-      <div className="bg-[#04174C] text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-8 relative">
+      <div className="bg-navy text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-4 relative">
         <div className="text-center flex-1">
-          <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+          <p className="text-sm font-medium text-white/60 truncate max-w-[100px] mx-auto">
             {leftName}
           </p>
-          <p className="text-3xl font-black tabular-nums">{leftScore}</p>
+          <p className="font-display text-5xl font-bold leading-none tabular-nums">{leftScore}</p>
         </div>
-        <div className="text-xl font-black opacity-20 px-4">-</div>
+        {/* Lopende minuut centraal tussen de scores, zoals op het scorebord van het startscherm */}
+        <div className="shrink-0 px-2 bg-volt text-navy rounded-md py-1 flex items-center gap-1 font-display text-lg font-bold tabular-nums leading-none">
+          <Clock size={14} /> {formatMinute(getCurrentMinute())}
+        </div>
         <div className="text-center flex-1">
-          <p className="text-[10px] font-black uppercase opacity-60 tracking-widest truncate max-w-[100px] mx-auto">
+          <p className="text-sm font-medium text-white/60 truncate max-w-[100px] mx-auto">
             {rightName}
           </p>
-          <p className="text-3xl font-black tabular-nums">{rightScore}</p>
-        </div>
-        <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-md px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
-          <Clock size={11} /> {formatMinute(getCurrentMinute())}
+          <p className="font-display text-5xl font-bold leading-none tabular-nums">{rightScore}</p>
         </div>
       </div>
 
@@ -267,20 +267,20 @@ export const MatchPlay: React.FC<Props> = ({
       {wisselTarget !== null && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setWisselTarget(null)}>
           <div
-            className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 space-y-5 border border-gray-100"
+            className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 space-y-5 ring-1 ring-navy/5"
             onMouseDown={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center">
               <div className="flex flex-col">
-                <h4 className="font-black text-[#04174C] text-sm uppercase tracking-wider">Speler wisselen</h4>
+                <h4 className="font-semibold text-navy text-base">Speler wisselen</h4>
               </div>
-              <button onClick={() => setWisselTarget(null)} className="p-2 bg-gray-50 rounded-full text-gray-400">
+              <button onClick={() => setWisselTarget(null)} className="p-2.5 bg-gray-100 rounded-full text-gray-500">
                 <CloseIcon size={20}/>
               </button>
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-3">Wie komt erin?</p>
+              <p className="text-sm text-gray-500 font-medium mb-3">Wie komt erin?</p>
               <div className="grid grid-cols-2 gap-2">
                 {sortedPresentPlayers
                   .filter(p => substitutes.includes(p.id))
@@ -291,9 +291,9 @@ export const MatchPlay: React.FC<Props> = ({
                         substitutePlayer(wisselTarget, p.id);
                         setWisselTarget(null);
                       }}
-                      className="py-3 px-2 bg-green-50 border border-green-100 rounded-xl text-xs font-black text-green-700 hover:bg-green-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      className="min-h-14 py-3 px-2 bg-volt-soft ring-1 ring-volt rounded-xl text-sm font-semibold text-navy hover:bg-volt active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                      <ArrowUpCircle size={14} />
+                      <ArrowUpCircle size={16} className="text-volt-ink shrink-0" />
                       {p.name}
                     </button>
                   ))}
@@ -302,7 +302,7 @@ export const MatchPlay: React.FC<Props> = ({
 
             <button
               onClick={() => setWisselTarget(null)}
-              className="w-full py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              className="w-full py-3.5 bg-gray-100 text-navy rounded-xl font-semibold text-sm"
             >
               Annuleren
             </button>
@@ -313,19 +313,19 @@ export const MatchPlay: React.FC<Props> = ({
       {/* LIJSTWEERGAVE: chronologisch overzicht van alles wat dit kwart gebeurd is (enkel ter info,
           invoer gebeurt via Snel invoeren) */}
       {viewMode === 'list' && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl ring-1 ring-navy/5 shadow-sm overflow-hidden">
           {timeline.length === 0 ? (
-            <p className="text-center text-gray-400 text-xs italic py-8">Nog geen events dit kwart.</p>
+            <p className="text-center text-gray-500 text-sm py-8">Nog geen events dit kwart.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-100">
               {timeline.map(item => (
-                <div key={item.key} className="flex items-center gap-3 py-2.5 px-3">
-                  <span className="w-11 text-right text-[11px] font-black text-gray-400 tabular-nums shrink-0">{formatMinute(item.minute)}</span>
+                <div key={item.key} className="flex items-center gap-3 py-2 px-3">
+                  <span className="w-11 text-right font-display text-base font-semibold leading-none text-gray-500 tabular-nums shrink-0">{formatMinute(item.minute)}</span>
                   {item.icon}
-                  <span className="text-xs font-bold text-[#04174C] flex-1">{item.text}</span>
+                  <span className="text-sm font-medium text-navy flex-1">{item.text}</span>
                   <button
                     onClick={() => setDeleteTarget({ type: item.type, index: item.index, label: item.label })}
-                    className="text-gray-300 hover:text-red-500 transition-colors p-1 shrink-0"
+                    className="text-gray-400 hover:text-red-500 transition-colors p-2.5 -my-1 shrink-0"
                   >
                     <CloseIcon size={16} />
                   </button>
@@ -343,12 +343,12 @@ export const MatchPlay: React.FC<Props> = ({
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={28} />
             </div>
-            <h3 className="text-lg font-black text-[#04174C] mb-2">Event verwijderen?</h3>
-            <p className="text-xs text-gray-500 mb-6">"{deleteTarget.label}" wordt verwijderd. Deze actie kan niet ongedaan worden gemaakt.</p>
+            <h3 className="text-lg font-semibold text-navy mb-2">Event verwijderen?</h3>
+            <p className="text-sm text-gray-500 mb-6">"{deleteTarget.label}" wordt verwijderd. Deze actie kan niet ongedaan worden gemaakt.</p>
             <div className="flex gap-3">
-              <button className="flex-1 py-3 font-bold text-gray-400" onClick={() => setDeleteTarget(null)}>Nee</button>
+              <button className="flex-1 py-3 rounded-xl font-semibold text-navy bg-gray-100" onClick={() => setDeleteTarget(null)}>Nee</button>
               <button
-                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100"
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-semibold shadow-lg shadow-red-100"
                 onClick={() => {
                   deleteEvent(deleteTarget.type, deleteTarget.index);
                   setDeleteTarget(null);
@@ -363,38 +363,38 @@ export const MatchPlay: React.FC<Props> = ({
 
       {/* SNEL INVOEREN: 4 grote actieknoppen (enige manier om events toe te voegen) */}
       {viewMode === 'quick' && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <div className="bg-white rounded-2xl ring-1 ring-navy/5 shadow-sm p-4">
           {quickStep === 'menu' && (
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => handleButtonClick(() => setQuickStep('select-scorer'))}
                 onTouchStart={() => handlePressStart(undoLastQuickGoal)}
                 onTouchEnd={handlePressEnd}
-                className="h-28 rounded-2xl bg-yellow-50 border-2 border-yellow-100 text-yellow-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-volt text-navy flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Goal size={24} />
-                <span className="text-2xl leading-none">{quarter.goalEvents.length}</span>
-                <span className="text-[10px]">Doelpunt</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{quarter.goalEvents.length}</span>
+                <span className="text-sm font-semibold">Doelpunt</span>
               </button>
               <button
                 onClick={() => handleButtonClick(() => setQuickStep('select-opponent-goal-type'))}
                 onTouchStart={() => handlePressStart(undoLastQuickOpponentGoal)}
                 onTouchEnd={handlePressEnd}
-                className="h-28 rounded-2xl bg-red-50 border-2 border-red-100 text-red-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-red-50 ring-2 ring-red-200 text-red-700 flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Target size={24} />
-                <span className="text-2xl leading-none">{(quarter.opponentGoalEvents || []).length}</span>
-                <span className="text-[10px]">Tegendoelpunt</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{(quarter.opponentGoalEvents || []).length}</span>
+                <span className="text-sm font-semibold">Tegendoelpunt</span>
               </button>
               <button
                 onClick={() => handleButtonClick(() => setQuickStep('select-tackler'))}
                 onTouchStart={() => handlePressStart(undoLastQuickTackle)}
                 onTouchEnd={handlePressEnd}
-                className="h-28 rounded-2xl bg-blue-50 border-2 border-blue-100 text-blue-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-navy/5 ring-1 ring-navy/10 text-navy flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Axe size={24} />
-                <span className="text-2xl leading-none">{(quarter.tackleEvents || []).length}</span>
-                <span className="text-[10px]">Tackle</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{(quarter.tackleEvents || []).length}</span>
+                <span className="text-sm font-semibold">Tackle</span>
               </button>
               <button
                 onClick={() => handleButtonClick(() => onUpdateQuarter({
@@ -402,27 +402,27 @@ export const MatchPlay: React.FC<Props> = ({
                 }))}
                 onTouchStart={() => handlePressStart(undoLastQuickSave)}
                 onTouchEnd={handlePressEnd}
-                className="h-28 rounded-2xl bg-emerald-50 border-2 border-emerald-100 text-emerald-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-navy/5 ring-1 ring-navy/10 text-navy flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Shield size={24} />
-                <span className="text-2xl leading-none">{(quarter.saveEvents || []).length}</span>
-                <span className="text-[10px]">Redding</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{(quarter.saveEvents || []).length}</span>
+                <span className="text-sm font-semibold">Redding</span>
               </button>
               <button
                 onClick={() => setQuickStep('select-injured')}
-                className="h-28 rounded-2xl bg-orange-50 border-2 border-orange-100 text-orange-700 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-orange-50 ring-1 ring-orange-200 text-orange-800 flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Bandage size={24} />
-                <span className="text-2xl leading-none">{(quarter.injuryEvents || []).length}</span>
-                <span className="text-[10px]">Blessure</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{(quarter.injuryEvents || []).length}</span>
+                <span className="text-sm font-semibold">Blessure</span>
               </button>
               <button
                 onClick={() => setQuickStep('select-outgoing')}
-                className="h-28 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-600 flex flex-col items-center justify-center gap-1 font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all"
+                className="h-28 rounded-2xl bg-gray-100 ring-1 ring-gray-200 text-navy flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <RefreshCw size={24} />
-                <span className="text-2xl leading-none">{substitutions.length}</span>
-                <span className="text-[10px]">Wissel</span>
+                <span className="font-display text-4xl font-bold leading-none tabular-nums">{substitutions.length}</span>
+                <span className="text-sm font-semibold">Wissel</span>
               </button>
             </div>
           )}
@@ -430,24 +430,24 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'menu' && (
             <button
               onClick={onEditLineup}
-              className="w-full mt-2 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="w-full mt-3 py-3.5 rounded-xl bg-white ring-1 ring-navy/15 text-navy font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
-              <ListChecks size={14} /> Opstelling wijzigen
+              <ListChecks size={16} /> Opstelling wijzigen
             </button>
           )}
 
           {quickStep === 'select-outgoing' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie gaat eraf?</h4>
-                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Wie gaat eraf?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {activeOnField.map(p => (
                   <button
                     key={p.id}
                     onClick={() => { setWisselTarget(p.id); setQuickStep('menu'); }}
-                    className="h-20 px-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-20 px-2 rounded-xl bg-gray-100 text-navy font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {p.name}
                   </button>
@@ -459,15 +459,15 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-scorer' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie scoorde?</h4>
-                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Wie scoorde?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {activeOnField.map(p => (
                   <button
                     key={p.id}
                     onClick={() => { setPendingScorerId(p.id); setQuickStep('select-assist'); }}
-                    className="h-20 px-2 rounded-xl bg-green-50 border border-green-100 text-green-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-20 px-2 rounded-xl bg-volt-soft ring-1 ring-volt text-navy font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {p.name}
                   </button>
@@ -479,7 +479,7 @@ export const MatchPlay: React.FC<Props> = ({
                     addGoal(null, null, 'owngoal');
                     setQuickStep('menu');
                   }}
-                  className="h-20 px-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  className="h-20 px-2 rounded-xl bg-white ring-1 ring-gray-300 text-gray-600 font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                 >
                   Eigen doelpunt
                 </button>
@@ -490,8 +490,8 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-assist' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie gaf de assist?</h4>
-                <button onClick={() => { setPendingScorerId(null); setQuickStep('menu'); }} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Wie gaf de assist?</h4>
+                <button onClick={() => { setPendingScorerId(null); setQuickStep('menu'); }} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {activeOnField.map(p => (
@@ -504,7 +504,7 @@ export const MatchPlay: React.FC<Props> = ({
                       }
                       setPendingScorerId(null);
                     }}
-                    className="h-20 px-2 rounded-xl bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-20 px-2 rounded-xl bg-volt-soft ring-1 ring-volt text-navy font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {p.name}
                   </button>
@@ -517,7 +517,7 @@ export const MatchPlay: React.FC<Props> = ({
                     }
                     setPendingScorerId(null);
                   }}
-                  className="h-20 px-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 font-black text-[10px] uppercase tracking-widest flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                  className="h-20 px-2 rounded-xl bg-white ring-1 ring-gray-300 text-gray-600 font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                 >
                   Niemand
                 </button>
@@ -528,8 +528,8 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-goal-type' && pendingGoal !== null && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Hoe werd het doelpunt gemaakt?</h4>
-                <button onClick={() => { setPendingGoal(null); setQuickStep('menu'); }} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Hoe werd het doelpunt gemaakt?</h4>
+                <button onClick={() => { setPendingGoal(null); setQuickStep('menu'); }} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {GOAL_TYPES.map(({ value, label }) => (
@@ -540,7 +540,7 @@ export const MatchPlay: React.FC<Props> = ({
                       setPendingGoal(null);
                       setQuickStep('menu');
                     }}
-                    className="h-16 px-2 rounded-xl bg-yellow-50 border border-yellow-100 text-yellow-800 font-bold text-[11px] flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-16 px-2 rounded-xl bg-volt-soft ring-1 ring-volt text-navy font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {label}
                   </button>
@@ -552,8 +552,8 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-opponent-goal-type' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Hoe scoorde de tegenstander?</h4>
-                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Hoe scoorde de tegenstander?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {GOAL_TYPES.map(({ value, label }) => (
@@ -565,7 +565,7 @@ export const MatchPlay: React.FC<Props> = ({
                       });
                       setQuickStep('menu');
                     }}
-                    className="h-16 px-2 rounded-xl bg-red-50 border border-red-100 text-red-800 font-bold text-[11px] flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-16 px-2 rounded-xl bg-red-50 ring-1 ring-red-200 text-red-800 font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {label}
                   </button>
@@ -577,8 +577,8 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-tackler' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie deed de tackle?</h4>
-                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Wie deed de tackle?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {activeOnField.map(p => (
@@ -588,7 +588,7 @@ export const MatchPlay: React.FC<Props> = ({
                       onUpdateQuarter({ tackleEvents: [...(quarter.tackleEvents || []), { playerId: p.id, minute: getCurrentMinute() }] });
                       setQuickStep('menu');
                     }}
-                    className="h-20 px-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-20 px-2 rounded-xl bg-navy/5 ring-1 ring-navy/10 text-navy font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {p.name}
                   </button>
@@ -600,8 +600,8 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'select-injured' && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">Wie is geblesseerd?</h4>
-                <button onClick={() => setQuickStep('menu')} className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Annuleren</button>
+                <h4 className="font-semibold text-navy text-base">Wie is geblesseerd?</h4>
+                <button onClick={() => setQuickStep('menu')} className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2">Annuleren</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {activeOnField.map(p => (
@@ -612,7 +612,7 @@ export const MatchPlay: React.FC<Props> = ({
                       setPendingInjuredId(p.id);
                       setQuickStep('injury-followup');
                     }}
-                    className="h-20 px-2 rounded-xl bg-orange-50 border border-orange-100 text-orange-800 font-bold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
+                    className="h-20 px-2 rounded-xl bg-orange-50 ring-1 ring-orange-200 text-orange-900 font-semibold text-sm flex items-center justify-center text-center leading-tight active:scale-95 transition-all"
                   >
                     {p.name}
                   </button>
@@ -624,7 +624,7 @@ export const MatchPlay: React.FC<Props> = ({
           {quickStep === 'injury-followup' && pendingInjuredId !== null && (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <h4 className="font-black text-[#04174C] text-xs uppercase tracking-widest">
+                <h4 className="font-semibold text-navy text-base">
                   Wordt {getName(pendingInjuredId)} gewisseld?
                 </h4>
                 <button
@@ -635,7 +635,7 @@ export const MatchPlay: React.FC<Props> = ({
                     setPendingInjuredId(null);
                     setQuickStep('menu');
                   }}
-                  className="text-gray-400 text-[10px] font-black uppercase tracking-widest shrink-0"
+                  className="text-gray-500 text-sm font-semibold px-2 py-2.5 -my-2 -me-2 shrink-0"
                 >
                   Annuleren
                 </button>
@@ -647,7 +647,7 @@ export const MatchPlay: React.FC<Props> = ({
                     setPendingInjuredId(null);
                     setQuickStep('menu');
                   }}
-                  className="h-16 px-2 rounded-xl bg-red-50 border border-red-100 text-red-800 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+                  className="h-16 px-2 rounded-xl bg-red-50 ring-1 ring-red-200 text-red-800 font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
                 >
                   <Triangle size={16} className="rotate-180 fill-red-500 text-red-500" /> Ja, wisselen
                 </button>
@@ -656,7 +656,7 @@ export const MatchPlay: React.FC<Props> = ({
                     setPendingInjuredId(null);
                     setQuickStep('menu');
                   }}
-                  className="h-16 px-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 font-black text-xs uppercase tracking-widest flex items-center justify-center active:scale-95 transition-all"
+                  className="h-16 px-2 rounded-xl bg-gray-100 text-navy font-semibold text-sm flex items-center justify-center active:scale-95 transition-all"
                 >
                   Nee, blijft staan
                 </button>

@@ -4,9 +4,9 @@
 // gewoon Nederlands in de componenten zelf staan.
 export const nl = {
   nav: {
-    start: 'START',
-    matches: 'WEDSTRIJDEN',
-    team: 'PLOEG',
+    start: 'Start',
+    matches: 'Wedstrijden',
+    team: 'Ploeg',
   },
   language: {
     label: 'Taal',
@@ -16,16 +16,16 @@ export const nl = {
     quarter: 'Kwart {{number}}',
   },
   scoreboard: {
-    live: '● Live',
+    live: 'Live',
     lastMatch: 'Laatste wedstrijd',
-    won: 'GEWONNEN 🎉',
-    lost: 'VERLOREN ⚽️',
-    draw: 'GELIJKSPEL 🤝',
+    won: 'Gewonnen',
+    lost: 'Verloren',
+    draw: 'Gelijkspel',
     minuteUnit: 'min',
   },
   dashboard: {
     noData: 'Nog geen wedstrijdgegevens',
-    resultsForm: 'Resultaten & Vorm',
+    resultsForm: 'Resultaten & vorm',
     winShort: 'W',
     drawShort: 'G',
     lossShort: 'V',
@@ -37,7 +37,7 @@ export const nl = {
     goalDiff: 'Doelsaldo',
     goalsFor: 'voor',
     goalsAgainst: 'tegen',
-    teamStats: 'Team Stats',
+    teamStats: 'Teamstatistieken',
     matches: 'Matchen',
     goals: 'Goals',
     assists: 'Assists',

@@ -23,34 +23,34 @@ export const buildEventTimeline = (quarter: Quarter, players: Player[], t: TFunc
     ...quarter.goalEvents.map((e, i): TimelineItem => ({
       key: `goal-${i}`,
       minute: e.minute ?? 0,
-      icon: <Goal size={14} className="text-yellow-600 shrink-0" />,
+      icon: <Goal size={14} className="text-volt-ink shrink-0" />,
       text: e.scorerId == null ? (
         <>{t('timeline.goal')} — <b>{t('timeline.ownGoalOpponent')}</b></>
       ) : (
         <>
           {t('timeline.goal')} <b>{getName(e.scorerId)}</b>
-          {e.assistId != null && <span className="text-gray-400 font-normal"> ({t('timeline.assist')}: {getName(e.assistId)})</span>}
-          {e.goalType && <span className="text-gray-400 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}
+          {e.assistId != null && <span className="text-gray-500 font-normal"> ({t('timeline.assist')}: {getName(e.assistId)})</span>}
+          {e.goalType && <span className="text-gray-500 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}
         </>
       ),
     })),
     ...(quarter.tackleEvents || []).map((e, i): TimelineItem => ({
       key: `tackle-${i}`,
       minute: e.minute ?? 0,
-      icon: <Axe size={14} className="text-blue-600 shrink-0" />,
+      icon: <Axe size={14} className="text-navy/50 shrink-0" />,
       text: <>{t('timeline.tackle')} <b>{getName(e.playerId)}</b></>,
     })),
     ...(quarter.saveEvents || []).map((e, i): TimelineItem => ({
       key: `save-${i}`,
       minute: e.minute ?? 0,
-      icon: <Shield size={14} className="text-emerald-600 shrink-0" />,
+      icon: <Shield size={14} className="text-navy/50 shrink-0" />,
       text: <>{t('timeline.save')} <b>{getName(e.playerId)}</b></>,
     })),
     ...(quarter.opponentGoalEvents || []).map((e, i): TimelineItem => ({
       key: `opp-${i}`,
       minute: e.minute ?? 0,
       icon: <Target size={14} className="text-red-600 shrink-0" />,
-      text: <>{t('timeline.opponentGoal')}{e.goalType && <span className="text-gray-400 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}</>,
+      text: <>{t('timeline.opponentGoal')}{e.goalType && <span className="text-gray-500 font-normal"> — {t(`goalTypes.${e.goalType}`)}</span>}</>,
     })),
     ...(quarter.injuryEvents || []).map((e, i): TimelineItem => ({
       key: `injury-${i}`,
@@ -66,7 +66,7 @@ export const buildEventTimeline = (quarter: Quarter, players: Player[], t: TFunc
         <>
           {t('timeline.substitution')}:{' '}
           <Triangle size={9} className="inline rotate-180 fill-red-500 text-red-500 -translate-y-0.4" /> <b>{getName(s.outId)}</b> -{' '}
-          <Triangle size={9} className="inline fill-green-500 text-green-500 -translate-y-0.4" /> <b>{getName(s.inId)}</b>
+          <Triangle size={9} className="inline fill-volt-ink text-volt-ink -translate-y-0.4" /> <b>{getName(s.inId)}</b>
         </>
       ),
     })),
