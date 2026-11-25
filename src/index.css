@@ -1,4 +1,15 @@
 @import "tailwindcss";
+
+/* Kleinere afrondingen doorheen de hele app (knoppen, kaarten, chips, modals, ...). Overschrijft
+   de standaardwaarden van Tailwind, zodat rounded-md/lg/xl/2xl/3xl overal mee kleiner worden.
+   rounded-full blijft enkel voor echte cirkels (avatars, bolletjes); tekstchips gebruiken rounded-md. */
+@theme {
+  --radius-md: 0.1875rem; /* standaard 0.375rem */
+  --radius-lg: 0.25rem;   /* standaard 0.5rem */
+  --radius-xl: 0.375rem;  /* standaard 0.75rem */
+  --radius-2xl: 0.5rem;   /* standaard 1rem */
+  --radius-3xl: 0.75rem;  /* standaard 1.5rem */
+}
 /* Arabisch is een doorlopend schrift: extra letterafstand (tracking-*) knipt de verbonden
    letters los. :lang(ar) geldt niet voor de admin-schermen, want die staan op lang="nl". */
 :lang(ar) * {

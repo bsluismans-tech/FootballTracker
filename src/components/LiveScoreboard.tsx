@@ -42,7 +42,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
     }`}>
       
       <div className="flex justify-between items-center mb-4">
-        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
+        <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest ${
           isLive ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-500'
         }`}>
           {isLive ? t('scoreboard.live') : t('scoreboard.lastMatch')}
@@ -50,7 +50,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
 
         {/* Resultaat Badge (Alleen bij afgeronde wedstrijd) */}
         {!isLive && (
-          <div className={`text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest ${
+          <div className={`text-[10px] font-black px-4 py-1 rounded-md uppercase tracking-widest ${
             ourGoals > opponentGoals ? 'bg-green-100 text-green-700' :
             ourGoals < opponentGoals ? 'bg-red-100 text-red-700' :
             'bg-gray-100 text-gray-600'
@@ -79,7 +79,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
               {t('common.quarter', { number: game.currentQuarter })}
             </span>
             {currentMinute != null && (
-              <span className="mt-1 text-lg font-black tabular-nums whitespace-nowrap bg-white/10 px-3 py-0.5 rounded-full">
+              <span className="mt-1 text-lg font-black tabular-nums whitespace-nowrap bg-white/10 px-3 py-0.5 rounded-md">
                 {formatMinuteLong(currentMinute, t('scoreboard.minuteUnit'))}
               </span>
             )}

@@ -156,7 +156,7 @@ export const QuarterLineup: React.FC<Props> = ({ quarter, presentPlayers, curren
             </p>
             <p className="text-3xl font-black tabular-nums">{rightScore}</p>
           </div>
-          <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-full px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
+          <div className="absolute -top-2 -right-2 bg-white text-[#04174C] rounded-md px-2.5 py-1 shadow-md flex items-center gap-1 text-[10px] font-black">
             <Clock size={11} /> {formatMinute(getCurrentMinute())}
           </div>
         </div>

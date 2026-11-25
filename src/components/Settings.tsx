@@ -36,7 +36,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
       <div
         // StopPropagation voorkomt dat klikken OP de kaart de modal sluit
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-white cursor-default"
+        className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative border-4 border-white cursor-default"
       >
         <div className="bg-gradient-to-br from-[#04174C] to-[#052A6B] p-8 text-center relative">
           <button
