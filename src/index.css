@@ -32,3 +32,47 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* --- Feestanimaties (doelpunt, tegendoelpunt, overwinning) --- */
+@keyframes score-pop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.35); color: var(--color-volt); }
+  60%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+@keyframes score-conceded {
+  0%, 100% { color: inherit; transform: translateX(0); }
+  20% { color: #f87171; transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { color: #f87171; transform: translateX(-2px); }
+  80% { transform: translateX(1px); }
+}
+@keyframes celebrate-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes celebrate-title {
+  0%   { opacity: 0; transform: scale(0.6) rotate(-4deg); }
+  15%  { opacity: 1; transform: scale(1.08) rotate(-2deg); }
+  25%  { transform: scale(1) rotate(-2deg); }
+  85%  { opacity: 1; transform: scale(1) rotate(-2deg); }
+  100% { opacity: 0; transform: scale(0.95) rotate(-2deg); }
+}
+@keyframes toast-in-out {
+  0%   { opacity: 0; transform: translate(-50%, -12px); }
+  12%  { opacity: 1; transform: translate(-50%, 0); }
+  85%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -12px); }
+}
+.animate-score-pop { animation: score-pop 0.7s cubic-bezier(.3,1.5,.5,1) both; display: inline-block; }
+.animate-score-conceded { animation: score-conceded 0.8s ease-in-out both; display: inline-block; }
+.animate-celebrate-flash { animation: celebrate-flash 2.8s ease-out both; }
+.animate-celebrate-title { animation: celebrate-title 2.8s cubic-bezier(.2,1.2,.4,1) both; }
+.animate-toast { animation: toast-in-out 2.2s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-score-pop, .animate-score-conceded, .animate-celebrate-title { animation: none; }
+  .animate-celebrate-flash { animation-duration: 2.8s; }
+}

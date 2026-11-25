@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { LiveScoreboard } from './LiveScoreboard';
+import { LiveScoreboard, type ScoreboardCelebration } from './LiveScoreboard';
+import { burstConfettiFrom, vibrate } from '../utils/celebrate';
 import { LanguagePicker } from './LanguagePicker';
 import type { Player, Game } from '../types';
 import { getSeasonId } from '../utils/season';
@@ -64,6 +65,70 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   }, []);
 
   const getPlayerName = (id: number) => players.find(p => p.id === id)?.name || 'Onbekend';
+
+  // --- VIERINGEN ---
+  // We vieren enkel wat er gebeurt terwijl het startscherm open staat: bij het openen van de app
+  // nemen we de huidige stand als vertrekpunt, zodat oude doelpunten niet opnieuw gevierd worden.
+  const scoreboardRef = useRef<HTMLElement>(null);
+  const lastScoreRef = useRef<{ id: number; ours: number; theirs: number } | null>(null);
+  // Id van de live wedstrijd die we hier zagen spelen: als die als gewonnen afgesloten wordt,
+  // volgt eenmalig een overwinningsviering.
+  const watchedLiveGameIdRef = useRef<number | null>(null);
+  const [celebration, setCelebration] = useState<ScoreboardCelebration | null>(null);
+  const [ourGoalPulse, setOurGoalPulse] = useState(0);
+  const [opponentGoalPulse, setOpponentGoalPulse] = useState(0);
+
+  useEffect(() => {
+    if (!liveGame) {
+      lastScoreRef.current = null;
+      return;
+    }
+    const ours = liveGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
+    const theirs = liveGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
+    const prev = lastScoreRef.current;
+    lastScoreRef.current = { id: liveGame.id, ours, theirs };
+    watchedLiveGameIdRef.current = liveGame.id;
+    if (!prev || prev.id !== liveGame.id) return;
+
+    if (ours > prev.ours) {
+      // Het nieuwste doelpunt staat achteraan in het lopende kwart (of anders in het laatste kwart met doelpunten).
+      const current = liveGame.currentQuarter ? liveGame.quarters[liveGame.currentQuarter - 1] : undefined;
+      const allGoals = liveGame.quarters.flatMap(q => q.goalEvents || []);
+      const goal = current?.goalEvents?.length ? current.goalEvents[current.goalEvents.length - 1] : allGoals[allGoals.length - 1];
+      const scorer = goal?.scorerId != null ? getPlayerName(goal.scorerId) : t('timeline.ownGoalOpponent');
+      const assist = goal?.assistId != null ? t('celebration.assistBy', { name: getPlayerName(goal.assistId) }) : null;
+      setOurGoalPulse(p => p + 1);
+      setCelebration({ key: Date.now(), title: t('celebration.goal'), subtitle: assist ? `${scorer} · ${assist}` : scorer });
+      burstConfettiFrom(scoreboardRef.current);
+      vibrate([30, 50, 30]);
+    }
+    if (theirs > prev.theirs) {
+      setOpponentGoalPulse(p => p + 1);
+    }
+    // getPlayerName/t veranderen niet tijdens een wedstrijd; enkel nieuwe snapshots tellen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveGame]);
+
+  useEffect(() => {
+    const watchedId = watchedLiveGameIdRef.current;
+    if (!lastFinishedGame || watchedId == null || lastFinishedGame.id !== watchedId) return;
+    watchedLiveGameIdRef.current = null;
+    const ours = lastFinishedGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
+    const theirs = lastFinishedGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
+    if (ours > theirs) {
+      setCelebration({ key: Date.now(), title: t('celebration.won'), subtitle: `${ours} - ${theirs}` });
+      burstConfettiFrom(scoreboardRef.current, 220);
+      vibrate([40, 60, 40, 60, 80]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastFinishedGame]);
+
+  // Viering na ~3 seconden weer weghalen
+  useEffect(() => {
+    if (!celebration) return;
+    const timeout = setTimeout(() => setCelebration(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [celebration]);
 
   const finishedGames = games.filter(g => g.status === 'finished');
 
@@ -146,19 +211,19 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
-          <h1 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">U10 Kaulille</h1>
+          <h1 className="font-display text-4xl font-semibold text-navy leading-none">U10 Kaulille</h1>
         </div>
         <LanguagePicker />
       </div>
 
       {/* Live Scoreboard / Laatste Resultaat */}
-      <section className="animate-in fade-in slide-in-from-top-4 duration-500">
+      <section ref={scoreboardRef} className="animate-in fade-in slide-in-from-top-4 duration-500">
         {liveGame ? (
           <div
             onClick={() => { if (isAdminMode) onEditGame(liveGame); }}
             className={isAdminMode ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}
           >
-            <LiveScoreboard game={liveGame} isLive={true} />
+            <LiveScoreboard game={liveGame} isLive={true} celebration={celebration} ourGoalPulse={ourGoalPulse} opponentGoalPulse={opponentGoalPulse} />
             {liveViewerCount != null && liveViewerCount > 0 && (
               <p className="flex items-center justify-center gap-1 text-xs text-gray-500 font-medium mt-2">
                 <Eye size={13} /> {t('plurals.viewers', { count: liveViewerCount })}
@@ -175,7 +240,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             onClick={() => onViewGame(lastFinishedGame)}
             className="cursor-pointer active:scale-[0.99] transition-transform"
           >
-            <LiveScoreboard game={lastFinishedGame} isLive={false} />
+            <LiveScoreboard game={lastFinishedGame} isLive={false} celebration={celebration} />
           </div>
         ) : (
           <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
@@ -287,10 +352,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
                 lang="nl"
                 onClick={startNewGame}
                 disabled={!canStart}
-                className="pointer-events-auto w-full bg-volt text-navy py-4 rounded-2xl shadow-xl shadow-navy/20 hover:brightness-95 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                className="pointer-events-auto w-full h-12 bg-volt text-navy rounded-xl text-base font-semibold shadow-lg shadow-navy/15 ring-1 ring-navy/10 hover:brightness-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
-                <Plus size={22} strokeWidth={2.75} />
-                <span className="font-display text-xl font-bold uppercase tracking-wide">Nieuwe wedstrijd</span>
+                <Plus size={18} strokeWidth={2.5} />
+                Nieuwe wedstrijd
               </button>
             </div>
           </div>
@@ -338,7 +403,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           className={`max-w-[70px] object-contain transition-all duration-500 cursor-pointer ${isAdminMode ? '' : 'opacity-40 grayscale hover:grayscale-0'}`}
         />
         <div className="flex flex-col items-center">
-          <p className="font-display text-sm font-semibold uppercase tracking-wider text-navy/40">U10 Kaulille FC</p>
+          <p className="text-xs font-semibold text-navy/50">U10 Kaulille FC</p>
           <p className="text-xs text-navy/40 font-medium mt-0.5">{t('dashboard.season', { season: getSeasonId() })}</p>
           {isAdminMode && (
             <p dir="ltr" lang="nl" className="mt-1.5 text-xs font-semibold text-volt-ink bg-volt-soft px-2 py-0.5 rounded-md">Admin mode actief</p>

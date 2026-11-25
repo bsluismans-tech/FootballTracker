@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks, Bandage } from 'lucide-react';
+import { Shield, Target, Axe, RefreshCw, ArrowUpCircle, X as CloseIcon, Goal, Clock, Trash2, Triangle, ListChecks, Bandage, Check } from 'lucide-react';
+import { vibrate } from '../utils/celebrate';
 import type { Player, Quarter, Game, FieldPosition, GoalType } from '../types';
 import { formatMinute, getQuarterMinute } from '../utils/matchTime';
 import { GOAL_TYPES, GOAL_TYPE_LABELS } from '../utils/goalTypes';
@@ -24,6 +25,7 @@ export const MatchPlay: React.FC<Props> = ({
   quarter, activeQuarterIdx, presentPlayers, currentGame, onUpdateQuarter,
   handleButtonClick, handlePressStart, handlePressEnd, onEditLineup, viewMode
 }) => {
+  const [goalToast, setGoalToast] = useState<{ key: number; text: string } | null>(null);
   const [wisselTarget, setWisselTarget] = useState<number | null>(null);
   const [quickStep, setQuickStep] = useState<QuickStep>('menu');
   const [pendingScorerId, setPendingScorerId] = useState<number | null>(null);
@@ -85,6 +87,9 @@ export const MatchPlay: React.FC<Props> = ({
     onUpdateQuarter({
       goalEvents: [...quarter.goalEvents, { scorerId, assistId, playersOnField: activeOnField.map(p => p.id), minute: getCurrentMinute(), goalType }]
     });
+    // Korte bevestiging voor de trainer die registreert (+ trilling op Android)
+    setGoalToast({ key: Date.now(), text: scorerId != null ? `Doelpunt ${getName(scorerId)}` : 'Eigen doelpunt tegenstander' });
+    vibrate(40);
   };
 
   // Meldt een blessure. Los daarvan wordt (indien nodig) een aparte wissel doorgevoerd via de
@@ -242,6 +247,18 @@ export const MatchPlay: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
+
+      {/* Bevestiging na het registreren van een doelpunt */}
+      {goalToast && (
+        <div
+          key={goalToast.key}
+          role="status"
+          onAnimationEnd={() => setGoalToast(null)}
+          className="fixed top-4 left-1/2 z-[60] flex items-center gap-2 bg-volt text-navy px-4 py-2.5 rounded-xl shadow-lg shadow-navy/20 ring-1 ring-navy/10 text-sm font-semibold whitespace-nowrap animate-toast pointer-events-none"
+        >
+          <Check size={16} strokeWidth={3} /> {goalToast.text}
+        </div>
+      )}
 
       {/* ALGEMENE SCORE BOVENAAN (THUIS/UIT DYNAMISCH) */}
       <div className="bg-navy text-white rounded-2xl p-4 shadow-lg flex items-center justify-between px-4 relative">

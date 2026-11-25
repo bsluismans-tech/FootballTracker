@@ -361,7 +361,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       <button
         onClick={() => { startQuarterActions(); setIsEditingLineup(false); }}
         disabled={!isLineupComplete(currentGame.quarters[activeQuarterIdx])}
-        className={`flex-1 py-3.5 rounded-xl font-display text-xl font-bold uppercase leading-none active:scale-95 transition-all ${
+        className={`flex-1 py-3.5 rounded-xl text-base font-semibold leading-none active:scale-95 transition-all ${
           isLineupComplete(currentGame.quarters[activeQuarterIdx])
             ? 'bg-volt text-navy shadow-lg shadow-navy/20'
             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
@@ -373,7 +373,7 @@ export const LiveMatch: React.FC<Props> = ({ currentGame, players, onUpdateGame,
       /* START / VOLGENDE / OPSLAAN KNOP */
       <button
         onClick={handleNext}
-        className="flex-1 bg-volt text-navy py-3.5 rounded-xl font-display text-xl font-bold uppercase leading-none shadow-lg shadow-navy/20 active:scale-95 transition-all"
+        className="flex-1 bg-volt text-navy py-3.5 rounded-xl text-base font-semibold leading-none shadow-lg shadow-navy/20 active:scale-95 transition-all"
       >
         {currentStep === 'setup' && 'Opstelling ingeven'}
         {currentStep === 'play' && (activeQuarterIdx < 3 ? `Einde kwart ${activeQuarterIdx + 1}` : 'Einde wedstrijd')}

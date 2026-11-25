@@ -55,7 +55,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
       <div className="flex justify-between items-center mb-6 px-1 pt-2">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
-          <h1 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">{t('history.title')}</h1>
+          <h1 className="font-display text-4xl font-semibold text-navy leading-none">{t('history.title')}</h1>
         </div>
       </div>
       
@@ -184,15 +184,15 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
 
       {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
-        <div dir="ltr" lang="nl" className="fixed bottom-[65px] left-0 right-0 p-4 mb-2 bg-gradient-to-t from-white via-white to-transparent z-40">
+        <div dir="ltr" lang="nl" className="fixed bottom-[5.5rem] left-0 right-0 px-4 z-40 pointer-events-none">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={startNewGame}
               disabled={!canStart}
-              className="w-full bg-volt text-navy py-4 rounded-2xl shadow-xl shadow-navy/20 hover:brightness-95 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              className="pointer-events-auto w-full h-12 bg-volt text-navy rounded-xl text-base font-semibold shadow-lg shadow-navy/15 ring-1 ring-navy/10 hover:brightness-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             >
-              <Plus size={22} strokeWidth={2.75} />
-              <span className="font-display text-xl font-bold uppercase tracking-wide">Nieuwe wedstrijd</span>
+              <Plus size={18} strokeWidth={2.5} />
+              Nieuwe wedstrijd
             </button>
           </div>
         </div>

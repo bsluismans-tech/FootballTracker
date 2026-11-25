@@ -52,6 +52,11 @@ export const nl = {
     course: 'Wedstrijdverloop',
     noEvents: 'Geen events dit kwart.',
   },
+  celebration: {
+    goal: 'Doelpunt!',
+    assistBy: 'assist {{name}}',
+    won: 'Gewonnen!',
+  },
   timeline: {
     unknown: 'Onbekend',
     goal: 'Goal',

@@ -51,6 +51,11 @@ export const ar: Locale = {
     course: 'مجريات المباراة',
     noEvents: 'لا أحداث في هذا الربع.',
   },
+  celebration: {
+    goal: 'هدف!',
+    assistBy: 'تمريرة {{name}}',
+    won: 'فوز!',
+  },
   timeline: {
     unknown: 'غير معروف',
     goal: 'هدف',

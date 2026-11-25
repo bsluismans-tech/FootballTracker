@@ -765,7 +765,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
-          <h1 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">Inzichten</h1>
+          <h1 className="font-display text-4xl font-semibold text-navy leading-none">Inzichten</h1>
         </div>
         <select
           value={seasonFilter}

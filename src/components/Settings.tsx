@@ -135,7 +135,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
     <div className="max-w-2xl mx-auto p-4 pb-32 space-y-6 select-none">
       <header className="flex items-center gap-2.5 px-1 pt-2">
         <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
-        <h2 className="font-display text-4xl font-bold text-navy uppercase leading-none tracking-tight">{t('team.title')}</h2>
+        <h2 className="font-display text-4xl font-semibold text-navy leading-none">{t('team.title')}</h2>
       </header>
 
       {/* Input Speler (alleen zichtbaar in Admin mode) */}

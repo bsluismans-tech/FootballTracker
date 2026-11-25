@@ -3,12 +3,25 @@ import { useTranslation } from 'react-i18next';
 import type { Game } from '../types';
 import { formatMinuteLong, getQuarterMinute } from '../utils/matchTime';
 
+// Een viering die over de kaart heen getoond wordt (doelpunt of overwinning). `key` verandert bij
+// elke nieuwe viering, zodat de CSS-animatie opnieuw start.
+export interface ScoreboardCelebration {
+  key: number;
+  title: string;
+  subtitle?: string;
+}
+
 interface Props {
   game: Game;
   isLive: boolean;
+  celebration?: ScoreboardCelebration | null;
+  // Telt op bij elk nieuw doelpunt van Kaulille / de tegenstander: laat het cijfer opveren of rood
+  // trillen. 0 = geen animatie (bv. bij het openen van de app).
+  ourGoalPulse?: number;
+  opponentGoalPulse?: number;
 }
 
-export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
+export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, ourGoalPulse = 0, opponentGoalPulse = 0 }) => {
   const { t } = useTranslation();
 
   // Live minuutklok: enkel nodig tijdens een lopende wedstrijd, zodat de minuut op het
@@ -33,6 +46,11 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
   
   const rightName = game.isAway ? 'Kaulille' : (game.opponent || t('common.opponent'));
   const rightScore = game.isAway ? ourGoals : opponentGoals;
+
+  const leftPulse = game.isAway ? opponentGoalPulse : ourGoalPulse;
+  const rightPulse = game.isAway ? ourGoalPulse : opponentGoalPulse;
+  const leftAnim = game.isAway ? 'animate-score-conceded' : 'animate-score-pop';
+  const rightAnim = game.isAway ? 'animate-score-pop' : 'animate-score-conceded';
 
   const resultTone = ourGoals > opponentGoals ? 'win' : ourGoals < opponentGoals ? 'loss' : 'draw';
 
@@ -74,7 +92,9 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
           <p className="text-sm font-medium text-white/60 mb-0.5 truncate max-w-[120px] mx-auto">
             {leftName}
           </p>
-          <p className="font-display text-7xl font-bold leading-none tabular-nums">{leftScore}</p>
+          <p className="font-display text-7xl font-bold leading-none tabular-nums">
+            <span key={leftPulse} className={leftPulse ? leftAnim : ''}>{leftScore}</span>
+          </p>
         </div>
 
         {/* Huidig kwart + minuut centraal tussen de scores (alleen tijdens een live wedstrijd) */}
@@ -98,9 +118,27 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive }) => {
           <p className="text-sm font-medium text-white/60 mb-0.5 truncate max-w-[120px] mx-auto">
             {rightName}
           </p>
-          <p className="font-display text-7xl font-bold leading-none tabular-nums">{rightScore}</p>
+          <p className="font-display text-7xl font-bold leading-none tabular-nums">
+            <span key={rightPulse} className={rightPulse ? rightAnim : ''}>{rightScore}</span>
+          </p>
         </div>
       </div>
+
+      {/* Viering: limoengroene flits over de kaart met een grote titel (bv. "Doelpunt!") */}
+      {celebration && (
+        <div
+          key={celebration.key}
+          role="status"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-volt text-navy text-center px-4 animate-celebrate-flash pointer-events-none"
+        >
+          <span className="font-display text-6xl font-bold leading-none animate-celebrate-title">
+            {celebration.title}
+          </span>
+          {celebration.subtitle && (
+            <span className="mt-2 text-base font-semibold animate-celebrate-title">{celebration.subtitle}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -49,6 +49,11 @@ export const fr: Locale = {
     course: 'Déroulement du match',
     noEvents: 'Aucun événement ce quart-temps.',
   },
+  celebration: {
+    goal: 'But !',
+    assistBy: 'passe de {{name}}',
+    won: 'Victoire !',
+  },
   timeline: {
     unknown: 'Inconnu',
     goal: 'But',

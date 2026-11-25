@@ -49,6 +49,11 @@ export const en: Locale = {
     course: 'Match timeline',
     noEvents: 'No events this quarter.',
   },
+  celebration: {
+    goal: 'Goal!',
+    assistBy: 'assist {{name}}',
+    won: 'We won!',
+  },
   timeline: {
     unknown: 'Unknown',
     goal: 'Goal',
