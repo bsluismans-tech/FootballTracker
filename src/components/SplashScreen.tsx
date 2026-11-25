@@ -31,11 +31,11 @@ export const SplashScreen: React.FC<Props> = ({ onDone }) => {
       onClick={skip}
       aria-label="U10 Kaulille"
       role="img"
+      // Zachte limoengroene gloed als radiaal verloop in de achtergrond zelf (geen blur-element: Safari
+      // tekende dat in stukken achter de geanimeerde tekst).
+      style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(198,244,50,0.12) 0, rgba(198,244,50,0.05) 140px, transparent 260px)' }}
       className={`fixed inset-0 z-[200] bg-navy flex flex-col items-center justify-center select-none transition-opacity duration-300 ${leaving ? 'opacity-0' : 'opacity-100'}`}
     >
-      {/* Zachte limoengroene gloed achter het logo */}
-      <div aria-hidden className="absolute w-80 h-80 rounded-full bg-volt/10 blur-3xl" />
-
       {/* De witte vlakken van het logo zijn transparant, dus op de navy achtergrond leggen we er
           een wit schild in dezelfde vorm achter. */}
       <div className="relative splash-logo" style={{ width: LOGO_SIZE, height: LOGO_SIZE }}>
