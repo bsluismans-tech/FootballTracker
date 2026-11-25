@@ -12,7 +12,8 @@ interface Props {
 
 export const MatchSetup: React.FC<Props> = ({ currentGame, players, onUpdateGame, formatDateForInput, handleDateChange }) => {
   
-  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+  // Vaste spelers eerst, gastspelers achteraan.
+  const sortedPlayers = [...players].sort((a, b) => Number(!!a.isGuest) - Number(!!b.isGuest) || a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -37,9 +38,10 @@ export const MatchSetup: React.FC<Props> = ({ currentGame, players, onUpdateGame
             <button
               key={p.id}
               onClick={() => onUpdateGame({...currentGame, playersPresent: currentGame.playersPresent.includes(p.id) ? currentGame.playersPresent.filter(id => id !== p.id) : [...currentGame.playersPresent, p.id]})}
-              className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex items-center justify-center leading-tight transition active:scale-[0.97] ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
+              className={`h-20 px-2 rounded-xl text-sm font-bold text-center flex flex-col items-center justify-center leading-tight transition active:scale-[0.97] ${currentGame.playersPresent.includes(p.id) ? 'bg-[#04174C] text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
             >
               {p.name}
+              {p.isGuest && <span className="mt-1 text-[9px] font-black uppercase tracking-wider opacity-60">Gast</span>}
             </button>
           ))}
         </div>

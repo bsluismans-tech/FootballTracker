@@ -78,6 +78,7 @@ export const pl: Locale = {
     goals: 'Gole',
     assists: 'Asysty',
     tackles: 'Odbiory',
+    guest: 'Gość',
   },
   plurals: {
     viewers_one: '{{count}} osoba śledzi mecz',

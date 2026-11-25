@@ -78,6 +78,7 @@ export const en: Locale = {
     goals: 'Goals',
     assists: 'Assists',
     tackles: 'Tackles',
+    guest: 'Guest',
   },
   plurals: {
     viewers_one: '{{count}} person following',

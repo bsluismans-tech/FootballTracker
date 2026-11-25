@@ -81,6 +81,7 @@ export const nl = {
     goals: 'Goals',
     assists: 'Assists',
     tackles: 'Tackles',
+    guest: 'Gast',
   },
   // Teksten met een aantal. i18next kiest zelf de juiste meervoudsvorm per taal
   // (_one, _two, _few, _many, _other, _zero — afhankelijk van de taal), daarom worden deze

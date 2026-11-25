@@ -4,6 +4,9 @@ export interface Player {
   // Of deze speler (ook) keeper speelt. Wordt gebruikt om keepers vooraan te tonen
   // bij de keeperselectie in de basisopstelling van een kwart.
   isKeeper?: boolean;
+  // Gastspeler: speelt af en toe eens mee om de ploeg uit de nood te helpen. Gasten tellen niet
+  // mee in de Inzichten-statistieken en staan bij een nieuwe wedstrijd niet standaard aangevinkt.
+  isGuest?: boolean;
 }
 
 export interface Parent {

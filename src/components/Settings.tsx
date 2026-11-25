@@ -92,6 +92,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [newPlayerIsKeeper, setNewPlayerIsKeeper] = useState(false);
+  const [newPlayerIsGuest, setNewPlayerIsGuest] = useState(false);
 
   const addPlayer = async () => {
     if (!playerName.trim()) return;
@@ -99,15 +100,23 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
     try {
       const newPlayer: Player = { id: newId, name: playerName.trim() };
       if (newPlayerIsKeeper) newPlayer.isKeeper = true;
+      if (newPlayerIsGuest) newPlayer.isGuest = true;
       await setDoc(doc(db, "players", newId.toString()), newPlayer);
       setPlayerName('');
       setNewPlayerIsKeeper(false);
+      setNewPlayerIsGuest(false);
     } catch (e) { console.error(e); }
   };
 
   const toggleKeeper = async (playerId: number, current: boolean | undefined) => {
     try {
       await updateDoc(doc(db, "players", playerId.toString()), { isKeeper: !current });
+    } catch (e) { console.error(e); }
+  };
+
+  const toggleGuest = async (playerId: number, current: boolean | undefined) => {
+    try {
+      await updateDoc(doc(db, "players", playerId.toString()), { isGuest: !current });
     } catch (e) { console.error(e); }
   };
 
@@ -148,6 +157,13 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
             >
               <Hand size={18} />
             </button>
+            <button
+              onClick={() => setNewPlayerIsGuest(!newPlayerIsGuest)}
+              title="Gastspeler (telt niet mee in Inzichten)"
+              className={`px-3 rounded-xl text-[10px] font-black uppercase transition-all ${newPlayerIsGuest ? 'bg-gray-50 text-blue-600' : 'bg-gray-50 text-gray-400'}`}
+            >
+              Gast
+            </button>
             <button onClick={addPlayer} className="bg-[#04174C] text-white px-4 rounded-xl shadow-lg active:scale-95 transition-all">
               <Plus size={20} strokeWidth={3} />
             </button>
@@ -157,7 +173,8 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
 
       {/* Lijst van spelers */}
       <section className="space-y-4">
-        {players.sort((a,b) => a.name.localeCompare(b.name)).map(player => (
+        {/* Vaste spelers eerst, gastspelers achteraan */}
+        {[...players].sort((a, b) => Number(!!a.isGuest) - Number(!!b.isGuest) || a.name.localeCompare(b.name)).map(player => (
           <div
             key={player.id}
             onClick={() => setSelectedPlayer(player)}
@@ -169,6 +186,9 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                   <User size={20} />
                 </div>
                 <span className="font-bold text-[#04174C]">{player.name}</span>
+                {player.isGuest && !isAdminMode && (
+                  <span className="text-[9px] font-black uppercase tracking-wider text-blue-500">{t('team.guest')}</span>
+                )}
                 {player.isKeeper && !isAdminMode && (
                   <Hand size={14} className="text-blue-500" />
                 )}
@@ -181,6 +201,15 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                     className={`p-2 rounded-lg transition-colors ${player.isKeeper ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-blue-500'}`}
                   >
                     <Hand size={18} />
+                  </button>
+                )}
+                {isAdminMode && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleGuest(player.id, player.isGuest); }}
+                    title="Gastspeler (telt niet mee in Inzichten)"
+                    className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase transition-colors ${player.isGuest ? 'text-blue-600' : 'text-gray-300 hover:text-blue-500'}`}
+                  >
+                    Gast
                   </button>
                 )}
                 {isAdminMode && (

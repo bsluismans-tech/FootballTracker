@@ -78,6 +78,7 @@ export const fr: Locale = {
     goals: 'Buts',
     assists: 'Passes déc.',
     tackles: 'Tacles',
+    guest: 'Invité',
   },
   plurals: {
     viewers_one: '{{count}} personne suit le match',

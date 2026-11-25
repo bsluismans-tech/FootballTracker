@@ -80,6 +80,7 @@ export const ar: Locale = {
     goals: 'الأهداف',
     assists: 'التمريرات الحاسمة',
     tackles: 'الافتكاكات',
+    guest: 'ضيف',
   },
   // Arabisch heeft zes meervoudsvormen: 0, 1, 2, 3-10, 11-99 en 100+.
   plurals: {

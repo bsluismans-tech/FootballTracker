@@ -121,7 +121,8 @@ export default function App() {
         substitutions: [], // Belangrijk voor pijl-logica
         lineup: {}         // Basisopstelling, wordt aan het begin van het kwart ingevuld
       })),
-      playersPresent: players.map(p => p.id),
+      // Gastspelers niet standaard aanwezig: die worden enkel aangevinkt als ze effectief meespelen.
+      playersPresent: players.filter(p => !p.isGuest).map(p => p.id),
       parentsPresent: [],
       opponent: '',
       isAway: false,
@@ -191,9 +192,11 @@ export default function App() {
       {/* Admin-schermen blijven Nederlands, ook als de app in het Arabisch (RTL) staat. */}
       {view === 'insights' && isAdminMode && (
         <div dir="ltr" lang="nl">
+          {/* Gastspelers tellen niet mee in de statistieken. Duo's en impact filteren al op
+              deze spelerslijst, dus gasten verdwijnen daar ook uit. */}
           <Insights
             games={games}
-            players={players}
+            players={players.filter(p => !p.isGuest)}
           />
         </div>
       )}
