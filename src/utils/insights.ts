@@ -13,7 +13,7 @@ export const POSITION_GROUP_LABELS: Record<PositionGroup, string> = {
   aanval: 'Aanval',
 };
 
-const POSITION_TO_GROUP: Record<FieldPosition, PositionGroup> = {
+export const POSITION_TO_GROUP: Record<FieldPosition, PositionGroup> = {
   keeper: 'keeper',
   verdediger_links: 'verdediging',
   verdediger_centraal: 'verdediging',
@@ -132,7 +132,7 @@ export interface QuarterSegment {
 // speelminuten-per-positie-statistiek als de trio-analyses (beste verdediging/aanval).
 // Ontbreekt de echte tijdsdata van het kwart (startedAt/endedAt, bestond nog niet in oude
 // wedstrijden), dan wordt een volledig kwart van 15' aangenomen.
-function computeQuarterSegments(quarter: Quarter): QuarterSegment[] {
+export function computeQuarterSegments(quarter: Quarter): QuarterSegment[] {
   const positions = Object.keys(quarter.lineup || {}) as FieldPosition[];
   if (positions.length === 0) return [];
 

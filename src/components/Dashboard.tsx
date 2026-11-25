@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile, Eye } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile, Eye, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LiveScoreboard, type ScoreboardCelebration } from './LiveScoreboard';
 import { burstConfettiFrom, vibrate } from '../utils/celebrate';
+import { computeSeasonBadges, liveGoalMilestone } from '../utils/badges';
+import { MilestoneList } from './Badges';
 import { LanguagePicker } from './LanguagePicker';
 import type { Player, Game } from '../types';
 import { getSeasonId } from '../utils/season';
@@ -66,6 +68,16 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
 
   const getPlayerName = (id: number) => players.find(p => p.id === id)?.name || 'Onbekend';
 
+  // --- BADGES & MIJLPALEN (lopend seizoen) ---
+  const season = getSeasonId();
+  const seasonBadges = useMemo(() => computeSeasonBadges(games, players, season), [games, players, season]);
+  // Mijlpalen uit de laatste 2 wedstrijden waarin er behaald werden, nieuwste eerst.
+  const recentMilestones = useMemo(() => {
+    const ms = seasonBadges.milestones;
+    const recentGameIds = Array.from(new Set([...ms].reverse().map(m => m.gameId))).slice(0, 2);
+    return [...ms].reverse().filter(m => recentGameIds.includes(m.gameId)).slice(0, 8);
+  }, [seasonBadges]);
+
   // --- VIERINGEN ---
   // We vieren enkel wat er gebeurt terwijl het startscherm open staat: bij het openen van de app
   // nemen we de huidige stand als vertrekpunt, zodat oude doelpunten niet opnieuw gevierd worden.
@@ -97,8 +109,21 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
       const goal = current?.goalEvents?.length ? current.goalEvents[current.goalEvents.length - 1] : allGoals[allGoals.length - 1];
       const scorer = goal?.scorerId != null ? getPlayerName(goal.scorerId) : t('timeline.ownGoalOpponent');
       const assist = goal?.assistId != null ? t('celebration.assistBy', { name: getPlayerName(goal.assistId) }) : null;
+      // Levert dit doelpunt een nieuwe badge op (bv. eerste doelpunt of hattrick)?
+      let badgeLine: string | undefined;
+      const scorerId = goal?.scorerId;
+      if (scorerId != null && !players.find(p => p.id === scorerId)?.isGuest) {
+        const before = seasonBadges.players[scorerId]?.find(b => b.id === 'scorer')?.value ?? 0;
+        const inThisGame = allGoals.filter(e => e.scorerId === scorerId).length;
+        const milestone = liveGoalMilestone(before, inThisGame);
+        if (milestone) badgeLine = t('badges.newBadge', { badge: t(`badges.names.${milestone.id}`) });
+      }
       setOurGoalPulse(p => p + 1);
-      setCelebration({ key: Date.now(), title: t('celebration.goal'), subtitle: assist ? `${scorer} · ${assist}` : scorer });
+      setCelebration({
+        key: Date.now(),
+        title: t('celebration.goal'),
+        subtitle: [assist ? `${scorer} · ${assist}` : scorer, badgeLine].filter(Boolean).join('\n'),
+      });
       burstConfettiFrom(scoreboardRef.current);
       vibrate([30, 50, 30]);
     }
@@ -339,6 +364,16 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             ))}
           </div>
         </div>
+
+        {/* --- RECENTE MIJLPALEN (zichtbaar voor iedereen) --- */}
+        {recentMilestones.length > 0 && (
+          <div className={`${card} p-5`}>
+            <div className={`${cardLabel} mb-1`}>
+              <Award size={15} className="text-navy/40" /> {t('badges.recentTitle')}
+            </div>
+            <MilestoneList milestones={recentMilestones} playerName={getPlayerName} />
+          </div>
+        )}
 
         {/* --- NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) ---
             Vast onderaan het scherm, net boven de navigatiebalk, zonder achtergrond: de rest van

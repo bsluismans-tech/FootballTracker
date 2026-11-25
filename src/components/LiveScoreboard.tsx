@@ -135,7 +135,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, our
             {celebration.title}
           </span>
           {celebration.subtitle && (
-            <span className="mt-2 text-base font-semibold animate-celebrate-title">{celebration.subtitle}</span>
+            <span className="mt-2 text-base font-semibold animate-celebrate-title whitespace-pre-line leading-snug">{celebration.subtitle}</span>
           )}
         </div>
       )}

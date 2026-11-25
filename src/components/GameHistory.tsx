@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Check, X, Trash2, ChevronDown, ChevronUp, Edit3, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Game, Player } from '../types';
 import { getDateLocale } from '../i18n';
 import { buildEventTimeline } from '../utils/eventTimeline';
 import { formatMinute } from '../utils/matchTime';
+import { computeSeasonBadges, type Milestone } from '../utils/badges';
+import { MilestoneList } from './Badges';
 
 interface Props {
   games: Game[];
@@ -35,6 +37,22 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
   // --- FILTERING ---
   // Alleen voltooide wedstrijden tonen in de geschiedenis
   const finishedGames = games.filter(g => g.status === 'finished');
+
+  // Badges per seizoen, om per wedstrijd te tonen welke nieuwe badges er behaald werden.
+  const milestonesByGame = useMemo(() => {
+    const map = new Map<number, Milestone[]>();
+    const seasons = Array.from(new Set(finishedGames.map(g => g.seasonId).filter(Boolean)));
+    seasons.forEach(season => {
+      computeSeasonBadges(games, players, season).milestones.forEach(m => {
+        if (!map.has(m.gameId)) map.set(m.gameId, []);
+        map.get(m.gameId)!.push(m);
+      });
+    });
+    return map;
+    // finishedGames is afgeleid van games
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [games, players]);
+  const playerName = (id: number) => players.find(p => p.id === id)?.name || t('timeline.unknown');
 
   const toggleExpand = (id: number) => {
     setExpandedGameId(expandedGameId === id ? null : id);
@@ -149,6 +167,14 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
                           ))}
                         </div>
                       </div>
+
+                      {/* Nieuwe badges in deze wedstrijd */}
+                      {(milestonesByGame.get(g.id)?.length ?? 0) > 0 && (
+                        <div className="bg-white ring-1 ring-navy/5 shadow-sm px-4 pt-3 pb-1 rounded-2xl mb-4">
+                          <p className="text-sm font-semibold text-navy">{t('badges.matchTitle')}</p>
+                          <MilestoneList milestones={milestonesByGame.get(g.id)!} playerName={playerName} />
+                        </div>
+                      )}
 
                       {/* Notities */}
                       {g.notes && (

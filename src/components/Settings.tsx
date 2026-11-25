@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Plus, Trash2, User, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Player, Game } from '../types';
+import { computeSeasonBadges } from '../utils/badges';
+import { getSeasonId } from '../utils/season';
+import { BadgeGrid } from './Badges';
 import { db } from '../firebase';
 import { doc, setDoc, updateDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
 
@@ -14,7 +17,9 @@ interface Props {
 // --- SUBCOMPONENT: PLAYER STATS MODAL ---
 const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () => void }> = ({ player, games, onClose }) => {
   const { t } = useTranslation();
-  const finishedGames = games.filter(g => g.status === 'finished');
+  // Alles in de spelersfiche (cijfers én badges) geldt voor het lopende seizoen.
+  const season = getSeasonId();
+  const finishedGames = games.filter(g => g.status === 'finished' && g.seasonId === season);
 
   const stats = finishedGames.reduce((acc, game) => {
     game.quarters.forEach(q => {
@@ -27,6 +32,15 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
     return acc;
   }, { goals: 0, assists: 0, tackles: 0, saves: 0, matches: 0 });
 
+  // Badges van het lopende seizoen (gasten krijgen geen badges)
+  const badges = useMemo(
+    () => (player.isGuest
+      ? null
+      // De Redder-badge (reddingen) enkel tonen voor keepers
+      : computeSeasonBadges(games, [player], season).players[player.id].filter(b => b.id !== 'saves' || player.isKeeper)),
+    [games, player, season]
+  );
+
   return (
     <div
       // Klik op de achtergrond sluit de modal
@@ -36,7 +50,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
       <div
         // StopPropagation voorkomt dat klikken OP de kaart de modal sluit
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative border-4 border-white cursor-default"
+        className="bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto overscroll-contain rounded-3xl shadow-2xl relative border-4 border-white cursor-default"
       >
         <div className="bg-gradient-to-br from-navy to-navy-light p-8 text-center relative">
           <button
@@ -49,7 +63,7 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <Star size={40} className="text-volt fill-volt" />
           </div>
           <h3 className="font-display text-3xl font-bold text-white leading-none">{player.name}</h3>
-          <p className="mt-1.5 text-white/60 text-xs font-medium">{t('team.playerSubtitle')}</p>
+          <p className="mt-1.5 text-white/60 text-xs font-medium">{t('team.playerSubtitle')} · {t('dashboard.season', { season })}</p>
         </div>
 
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
@@ -80,6 +94,15 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             </div>
           )}
         </div>
+
+        {badges && (
+          <div className="px-6 pb-6 bg-gray-50">
+            <div className="flex items-baseline justify-between gap-2 mb-3">
+              <h4 className="text-base font-semibold text-navy">{t('badges.title')}</h4>
+            </div>
+            <BadgeGrid progress={badges} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -88,6 +111,9 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
 // --- MAIN SETTINGS COMPONENT ---
 export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
   const { t } = useTranslation();
+  const season = getSeasonId();
+  const teamBadges = useMemo(() => computeSeasonBadges(games, players, season).team, [games, players, season]);
+
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
@@ -137,6 +163,14 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
         <span aria-hidden className="w-1.5 h-8 rounded-sm bg-volt" />
         <h2 className="font-display text-4xl font-semibold text-navy leading-none">{t('team.title')}</h2>
       </header>
+
+      {/* Ploegbadges van het lopende seizoen */}
+      <section className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5">
+        <div className="flex items-baseline justify-between gap-2 mb-3">
+          <h3 className="text-base font-semibold text-navy">{t('badges.teamTitle')}</h3>
+        </div>
+        <BadgeGrid progress={teamBadges} />
+      </section>
 
       {/* Input Speler (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
