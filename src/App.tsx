@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Player, Game } from './types';
 import { Dashboard } from './components/Dashboard';
 import { Navigation } from './components/Navigation';
@@ -6,6 +6,7 @@ import { GameHistory } from './components/GameHistory';
 import { LiveMatch } from './components/LiveMatch';
 import { Settings } from './components/Settings';
 import { Insights } from './components/Insights';
+import { SplashScreen } from './components/SplashScreen';
 
 // Importeer Firebase config en Firestore functies
 import { db } from './firebase'; 
@@ -18,6 +19,15 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([]);
 
   const [view, setView] = useState('dashboard');
+
+  // Splashscreen: één keer per sessie (niet opnieuw na een herlaad door de auto-update).
+  const [showSplash, setShowSplash] = useState(() => {
+    try { return sessionStorage.getItem('splashShown') !== '1'; } catch { return true; }
+  });
+  const hideSplash = useCallback(() => {
+    setShowSplash(false);
+    try { sessionStorage.setItem('splashShown', '1'); } catch { /* geen opslag: niet erg */ }
+  }, []);
 
   // Nieuwe versie automatisch laden, maar nooit midden in het registreren van een wedstrijd.
   useAutoUpdate(view !== 'game');
@@ -167,6 +177,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${view === 'dashboard' ? 'bg-navy/5' : 'bg-gray-50'} pb-24`}>
+      {showSplash && <SplashScreen onDone={hideSplash} />}
       {view === 'dashboard' && (
         <Dashboard
           players={players}
