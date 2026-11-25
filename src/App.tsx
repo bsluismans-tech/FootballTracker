@@ -178,6 +178,10 @@ export default function App() {
   return (
     <div className={`min-h-screen ${view === 'dashboard' ? 'bg-navy/5' : 'bg-gray-50'} pb-24`}>
       {showSplash && <SplashScreen onDone={hideSplash} />}
+      {/* Zachte overgang bij het wisselen van scherm: het nieuwe scherm vervaagt kort in beeld.
+          Bewust enkel opacity (geen transform): een transform zou vaste elementen zoals de
+          sticky knop "Nieuwe wedstrijd" en modals laten verspringen. */}
+      <div key={view} className="animate-screen-in">
       {view === 'dashboard' && (
         <Dashboard
           players={players}
@@ -264,6 +268,8 @@ export default function App() {
           />
         </div>
       )}
+
+      </div>
 
       {view !== 'game' && (
         <Navigation

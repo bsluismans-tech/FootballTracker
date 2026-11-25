@@ -11,6 +11,7 @@ import { LanguagePicker } from './LanguagePicker';
 import type { Player, Game } from '../types';
 import { getSeasonId } from '../utils/season';
 import { useLiveViewerCount } from '../utils/liveViewers';
+import { CountUp } from './CountUp';
 
 interface Props {
   players: Player[];
@@ -290,7 +291,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
                 { value: stats.losses, label: t('dashboard.lossShort') },
               ].map((item, i) => (
                 <span key={i} className="flex items-baseline gap-0.5">
-                  <span className="font-display text-3xl font-bold text-navy leading-none tabular-nums">{item.value}</span>
+                  <CountUp value={item.value} className="font-display text-3xl font-bold text-navy leading-none tabular-nums" />
                   <span className="text-sm font-semibold text-gray-400">{item.label}</span>
                 </span>
               ))}
@@ -328,7 +329,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             </div>
             <div>
               <div className={`font-display text-4xl font-bold leading-none tabular-nums ${goalDiff > 0 ? 'text-volt-ink' : goalDiff < 0 ? 'text-red-600' : 'text-navy'}`}>
-                {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
+                <CountUp value={goalDiff} signed />
               </div>
               <div className="text-xs text-gray-500 font-medium mt-1 leading-tight">
                 {stats.goalsFor} {t('dashboard.goalsFor')} · {stats.goalsAgainst} {t('dashboard.goalsAgainst')}
@@ -350,12 +351,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               { label: t('dashboard.assists'), value: stats.totalAssists, icon: <Handshake size={14} /> },
               { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={14} /> },
               { label: t('dashboard.saves'), value: stats.totalSaves, icon: <Shield size={14} /> },
-              { label: t('dashboard.fun'), value: '100%', icon: <Smile size={14} /> },
+              { label: t('dashboard.fun'), value: 100, suffix: '%', icon: <Smile size={14} /> },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center">
-                <span className="font-display text-4xl font-bold text-navy leading-none tabular-nums">
-                  {item.value}
-                </span>
+                <CountUp value={item.value} suffix={item.suffix} className="font-display text-4xl font-bold text-navy leading-none tabular-nums" />
                 <span className="mt-1 flex items-center gap-1 text-xs font-medium text-gray-500">
                   <span className="text-navy/30">{item.icon}</span>
                   {item.label}
@@ -417,7 +416,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
                       </span>
                       <span className="flex-1 font-medium text-gray-800">{getPlayerName(item.id)}</span>
                       <span className="flex items-baseline gap-1">
-                        <span className="font-display text-2xl font-bold text-navy tabular-nums leading-none">{item.value}</span>
+                        <CountUp value={item.value} className="font-display text-2xl font-bold text-navy tabular-nums leading-none" />
                         <span className="text-xs text-gray-500">{list.unit}</span>
                       </span>
                     </div>

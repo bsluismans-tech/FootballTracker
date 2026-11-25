@@ -7,6 +7,7 @@ import { getSeasonId } from '../utils/season';
 import { BadgeGrid } from './Badges';
 import { db } from '../firebase';
 import { doc, setDoc, updateDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { CountUp } from './CountUp';
 
 interface Props {
   players: Player[];
@@ -69,22 +70,22 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
         <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
           <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
             <Gamepad2 size={16} className="text-navy/40 mb-1" />
-            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.matches}</div>
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.matches} /></div>
             <div className="mt-1 text-xs font-medium text-gray-500">{t('team.matches')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
             <Target size={16} className="text-navy/40 mb-1" />
-            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.goals}</div>
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.goals} /></div>
             <div className="mt-1 text-xs font-medium text-gray-500">{t('team.goals')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
             <Handshake size={16} className="text-navy/40 mb-1" />
-            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.assists}</div>
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.assists} /></div>
             <div className="mt-1 text-xs font-medium text-gray-500">{t('team.assists')}</div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
             <Axe size={16} className="text-navy/40 mb-1" />
-            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none">{stats.tackles}</div>
+            <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.tackles} /></div>
             <div className="mt-1 text-xs font-medium text-gray-500">{t('team.tackles')}</div>
           </div>
           {stats.saves > 0 && (

@@ -7,6 +7,7 @@ import { getSeasonId } from '../utils/season';
 import { generateTeamInsights, generatePlayerReport } from '../utils/aiTeamInsights';
 import type { TeamAiInsight } from '../utils/aiTeamInsights';
 import type { TeamInsight, InsightsData } from '../utils/insights';
+import { CountUp } from './CountUp';
 
 // Visuele opstelling (dubbele ruit), zelfde indeling als QuarterLineup.tsx: aanval bovenaan,
 // keeper onderaan — herkenbaar voor trainers die het live-invoerscherm al kennen.
@@ -282,8 +283,6 @@ const heatmapColor = (pct: number): string => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-// Geen overbodige ".0" tonen bij een rond gemiddelde (bv. "4" i.p.v. "4.0").
-const formatAvg = (value: number): string => (Number.isInteger(value) ? `${value}` : value.toFixed(1));
 
 // "Onbekend" (doelpunten van vóór de goal-type-tracking) altijd onderaan tonen, in het grijs,
 // ongeacht het aantal — de overige types blijven gesorteerd op aantal.
@@ -805,7 +804,7 @@ export const Insights: React.FC<Props> = ({ games, players }) => {
                 { label: 'Saves', value: team.avgSaves },
               ].map(item => (
                 <div key={item.label}>
-                  <div className="font-display text-4xl font-bold text-navy leading-none tabular-nums">{formatAvg(item.value)}</div>
+                  <div className="font-display text-4xl font-bold text-navy leading-none tabular-nums"><CountUp value={item.value} decimals={Number.isInteger(item.value) ? 0 : 1} /></div>
                   <div className="mt-1 text-xs font-medium text-gray-500">{item.label}</div>
                 </div>
               ))}

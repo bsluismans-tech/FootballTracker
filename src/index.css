@@ -93,3 +93,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .splash-logo, .splash-title { animation: splash-title 0.4s ease-out both; }
 }
+
+/* --- Zachte overgang tussen schermen (enkel opacity, zie App.tsx) --- */
+@keyframes screen-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-screen-in { animation: screen-in 0.22s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-screen-in { animation: none; }
+}
