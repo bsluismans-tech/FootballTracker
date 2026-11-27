@@ -34,7 +34,6 @@ export const en: Locale = {
     goalDiff: 'Goal difference',
     goalsFor: 'for',
     goalsAgainst: 'against',
-    teamStats: 'Team Stats',
     matches: 'Matches',
     goals: 'Goals',
     assists: 'Assists',
@@ -42,6 +41,9 @@ export const en: Locale = {
     saves: 'Saves',
     fun: 'Fun',
     season: 'Season {{season}}',
+    perMatch: '{{value}} per match',
+    avgPerMatch: 'average {{value}} per match',
+    assistShare: '{{value}}% of goals',
   },
   history: {
     title: 'Matches',

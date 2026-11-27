@@ -35,7 +35,6 @@ export const ar: Locale = {
     goalDiff: 'فارق الأهداف',
     goalsFor: 'له',
     goalsAgainst: 'عليه',
-    teamStats: 'إحصائيات الفريق',
     matches: 'المباريات',
     goals: 'الأهداف',
     assists: 'التمريرات الحاسمة',
@@ -44,6 +43,9 @@ export const ar: Locale = {
     fun: 'المتعة',
     // \u2066…\u2069 houdt "2026-2027" links-naar-rechts; anders toont de browser "2027-2026".
     season: 'موسم \u2066{{season}}\u2069',
+    perMatch: '{{value}} في كل مباراة',
+    avgPerMatch: 'بمعدل {{value}} في كل مباراة',
+    assistShare: '{{value}}% من الأهداف',
   },
   history: {
     title: 'المباريات',

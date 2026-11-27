@@ -11,35 +11,32 @@ interface Props {
 export const Navigation: React.FC<Props> = ({ view, setView, isAdminMode }) => {
   const { t } = useTranslation();
 
+  // Eén tab: actief = licht navy vlakje met een limoengroen streepje onder het label.
+  const tab = (id: string, Icon: React.ElementType, label: string, lang?: string) => {
+    const active = view === id;
+    return (
+      <button
+        onClick={() => setView(id)}
+        aria-current={active ? 'page' : undefined}
+        className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-colors ${active ? 'bg-navy/5 text-navy' : 'text-gray-400 hover:text-gray-600'}`}
+      >
+        <Icon size={22} />
+        <span lang={lang} className="text-[11px] font-semibold">{label}</span>
+        <span aria-hidden className={`h-[3px] w-4 rounded-full ${active ? 'bg-volt' : 'bg-transparent'}`} />
+      </button>
+    );
+  };
+
+  // Zwevende navigatiekaart: los van de onderrand, met afgeronde hoeken en een zachte schaduw.
+  // De wrapper laat klikken door (pointer-events-none), enkel de kaart zelf vangt ze op.
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-1 pb-3 shadow-2xl z-50">
-      <div className="max-w-2xl mx-auto w-full flex justify-around">
-        <button onClick={() => setView('dashboard')} className={`relative flex flex-col items-center px-3 py-2 transition-colors ${view === 'dashboard' ? 'text-navy' : 'text-gray-400'}`}>
-          {view === 'dashboard' && <span aria-hidden className="absolute -top-1 inset-x-3 h-1 rounded-b-sm bg-volt" />}
-          <LayoutDashboard size={24} />
-          <span className="text-[11px] mt-1 font-semibold">{t('nav.start')}</span>
-        </button>
-
-        <button onClick={() => setView('history')} className={`relative flex flex-col items-center px-3 py-2 transition-colors ${view === 'history' ? 'text-navy' : 'text-gray-400'}`}>
-          {view === 'history' && <span aria-hidden className="absolute -top-1 inset-x-3 h-1 rounded-b-sm bg-volt" />}
-          <Gamepad2Icon size={24} />
-          <span className="text-[11px] mt-1 font-semibold">{t('nav.matches')}</span>
-        </button>
-
-        <button onClick={() => setView('settings')} className={`relative flex flex-col items-center px-3 py-2 transition-colors ${view === 'settings' ? 'text-navy' : 'text-gray-400'}`}>
-          {view === 'settings' && <span aria-hidden className="absolute -top-1 inset-x-3 h-1 rounded-b-sm bg-volt" />}
-          <Users size={24} />
-          <span className="text-[11px] mt-1 font-semibold">{t('nav.team')}</span>
-        </button>
-
+    <nav className="fixed bottom-0 inset-x-0 z-50 px-4 pb-3 pointer-events-none">
+      <div className="pointer-events-auto max-w-2xl mx-auto flex gap-1 p-1.5 bg-white rounded-2xl ring-1 ring-navy/5 shadow-[0_12px_32px_-6px_rgba(4,23,76,0.25)]">
+        {tab('dashboard', LayoutDashboard, t('nav.start'))}
+        {tab('history', Gamepad2Icon, t('nav.matches'))}
+        {tab('settings', Users, t('nav.team'))}
         {/* Enkel zichtbaar in Admin-mode: statistieken zijn niet relevant voor ouders/spelers */}
-        {isAdminMode && (
-          <button onClick={() => setView('insights')} className={`relative flex flex-col items-center px-3 py-2 transition-colors ${view === 'insights' ? 'text-navy' : 'text-gray-400'}`}>
-          {view === 'insights' && <span aria-hidden className="absolute -top-1 inset-x-3 h-1 rounded-b-sm bg-volt" />}
-            <BarChart3 size={24} />
-            <span lang="nl" className="text-[11px] mt-1 font-semibold">Inzichten</span>
-          </button>
-        )}
+        {isAdminMode && tab('insights', BarChart3, 'Inzichten', 'nl')}
       </div>
     </nav>
   );

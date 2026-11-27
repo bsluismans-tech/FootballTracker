@@ -103,3 +103,24 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-screen-in { animation: none; }
 }
+
+/* --- Decor-cijfer: groot omlijnd getal in heel lichte navy op de achtergrond van een tegel --- */
+.ghost-number {
+  position: absolute;
+  inset-inline-end: -6px;
+  bottom: -26px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 132px;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(4, 23, 76, 0.07);
+  pointer-events: none;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.ghost-number-sm {
+  font-size: 96px;
+  bottom: -20px;
+  inset-inline-end: -4px;
+}

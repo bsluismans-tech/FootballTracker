@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Users, Gamepad2, Smile, Eye, Award } from 'lucide-react';
+import { Target, Plus, Trophy, Shield, Activity, Handshake, Axe, Gamepad2, Smile, Eye, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LiveScoreboard, type ScoreboardCelebration } from './LiveScoreboard';
 import { burstConfettiFrom, vibrate } from '../utils/celebrate';
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame, onViewGame }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
   const liveViewerCount = useLiveViewerCount(liveGame ? (liveGame.id as number) : null);
@@ -189,6 +189,11 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   });
 
   const goalDiff = stats.goalsFor - stats.goalsAgainst;
+  const matchCount = finishedGames.length;
+  // Eén decimaal, met het decimaalteken van de gekozen taal maar altijd westerse cijfers
+  // (zoals de andere getallen in de app), bv. "5,9" in het Nederlands en "5.9" in het Engels.
+  const formatOne = (n: number) =>
+    new Intl.NumberFormat(`${i18n.resolvedLanguage || 'nl'}-u-nu-latn`, { maximumFractionDigits: 1 }).format(n);
 
   const getResult = (game: Game) => {
     if (game.result) return game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D';
@@ -228,7 +233,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   const topKeepers = Object.entries(savesByKeeper).map(([id, saves]) => ({ id: parseInt(id), saves })).sort((a, b) => b.saves - a.saves).slice(0, 3);
 
   // Eén vaste stijl voor alle lichte kaarten op het startscherm.
-  const card = 'bg-white rounded-2xl shadow-sm ring-1 ring-navy/5';
+  const card = 'relative overflow-hidden bg-white rounded-2xl shadow-sm ring-1 ring-navy/5';
   const cardLabel = 'flex items-center gap-1.5 text-sm font-medium text-gray-500';
 
   return (
@@ -277,9 +282,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
       </section>
 
       <div className="grid gap-4">
-        {/* Top Rij: Balans, Vorm en Saldo */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className={`col-span-2 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
+        {/* --- BENTO-RASTER: tegels in verschillende maten (6 kolommen) --- */}
+        <div className="grid grid-cols-6 gap-2.5">
+          {/* Resultaten & vorm (breed) */}
+          <div className={`col-span-4 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
             <div className={`${cardLabel} mb-3`}>
               <Activity size={15} className="text-navy/40" /> {t('dashboard.resultsForm')}
             </div>
@@ -323,9 +329,10 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             </div>
           </div>
 
-          <div className={`col-span-1 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
+          {/* Doelsaldo */}
+          <div className={`col-span-2 ${card} p-4 flex flex-col justify-between min-h-[120px]`}>
             <div className={`${cardLabel} mb-1`}>
-              <Target size={15} className="text-navy/40" /> {t('dashboard.goalDiff')}
+              <Target size={15} className="text-navy/40 shrink-0" /> {t('dashboard.goalDiff')}
             </div>
             <div>
               <div className={`font-display text-4xl font-bold leading-none tabular-nums ${goalDiff > 0 ? 'text-volt-ink' : goalDiff < 0 ? 'text-red-600' : 'text-navy'}`}>
@@ -336,32 +343,64 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               </div>
             </div>
           </div>
-        </div>
 
-        {/* --- TEAM STATS SECTIE --- */}
-        <div className={`${card} p-5`}>
-          <div className={`${cardLabel} mb-5`}>
-            <Users size={15} className="text-navy/40" /> {t('dashboard.teamStats')}
+          {/* Hoofdtegel: doelpunten, met een zacht limoengroen verloop in de hoek */}
+          <div
+            className={`col-span-6 ${card} p-4`}
+            style={{ backgroundImage: 'radial-gradient(180px 140px at 100% 100%, rgba(198,244,50,0.22), transparent 70%)' }}
+          >
+            <div className={`${cardLabel} relative`}>
+              <Target size={15} className="text-navy/40" /> {t('dashboard.goals')}
+            </div>
+            <div className="relative flex items-end gap-3.5 mt-2">
+              <CountUp value={stats.goalsFor} className="font-display text-7xl font-bold text-navy leading-[0.9] tabular-nums" />
+              {matchCount > 0 && (
+                <p className="mb-1.5 text-xs font-medium text-gray-500">
+                  {t('dashboard.avgPerMatch', { value: formatOne(stats.goalsFor / matchCount) })}
+                </p>
+              )}
+            </div>
+            <span aria-hidden className="ghost-number">{stats.goalsFor}</span>
           </div>
 
-          <div className="grid grid-cols-3 gap-y-6 gap-x-2">
-            {[
-              { label: t('dashboard.matches'), value: finishedGames.length, icon: <Gamepad2 size={14} /> },
-              { label: t('dashboard.goals'), value: stats.goalsFor, icon: <Target size={14} /> },
-              { label: t('dashboard.assists'), value: stats.totalAssists, icon: <Handshake size={14} /> },
-              { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={14} /> },
-              { label: t('dashboard.saves'), value: stats.totalSaves, icon: <Shield size={14} /> },
-              { label: t('dashboard.fun'), value: 100, suffix: '%', icon: <Smile size={14} /> },
-            ].map((item, i) => (
-              <div key={i} className="flex flex-col items-center">
-                <CountUp value={item.value} suffix={item.suffix} className="font-display text-4xl font-bold text-navy leading-none tabular-nums" />
-                <span className="mt-1 flex items-center gap-1 text-xs font-medium text-gray-500">
-                  <span className="text-navy/30">{item.icon}</span>
-                  {item.label}
-                </span>
+          {/* Middelgrote tegels */}
+          {[
+            {
+              label: t('dashboard.assists'), value: stats.totalAssists, icon: <Handshake size={15} />,
+              sub: stats.goalsFor > 0 ? t('dashboard.assistShare', { value: Math.round((stats.totalAssists / stats.goalsFor) * 100) }) : null,
+            },
+            {
+              label: t('dashboard.saves'), value: stats.totalSaves, icon: <Shield size={15} />,
+              sub: matchCount > 0 ? t('dashboard.perMatch', { value: formatOne(stats.totalSaves / matchCount) }) : null,
+            },
+          ].map(item => (
+            <div key={item.label} className={`col-span-3 ${card} p-4`}>
+              <div className={`${cardLabel} relative`}>
+                <span className="text-navy/40">{item.icon}</span> {item.label}
               </div>
-            ))}
-          </div>
+              <CountUp value={item.value} className="relative block mt-2.5 font-display text-5xl font-bold text-navy leading-[0.9] tabular-nums" />
+              {item.sub && <p className="relative mt-1 text-xs font-medium text-gray-500">{item.sub}</p>}
+              <span aria-hidden className="ghost-number ghost-number-sm">{item.value}</span>
+            </div>
+          ))}
+
+          {/* Kleine tegels */}
+          {[
+            { label: t('dashboard.matches'), value: matchCount, icon: <Gamepad2 size={15} /> },
+            { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={15} /> },
+            { label: t('dashboard.fun'), value: 100, suffix: '%', icon: <Smile size={15} />, accent: true },
+          ].map(item => (
+            <div key={item.label} className={`col-span-2 ${card} p-4`}>
+              <div className={cardLabel}>
+                <span className="text-navy/40 shrink-0">{item.icon}</span> <span className="truncate">{item.label}</span>
+              </div>
+              <CountUp
+                value={item.value}
+                suffix={item.suffix}
+                className={`block mt-2.5 font-display text-4xl font-bold leading-[0.9] tabular-nums ${item.accent ? 'text-volt-ink' : 'text-navy'}`}
+              />
+            </div>
+          ))}
         </div>
 
         {/* --- RECENTE MIJLPALEN (zichtbaar voor iedereen) --- */}
@@ -379,7 +418,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             de pagina scrollt erachter door. De wrapper laat klikken door (pointer-events-none),
             enkel de knop zelf vangt ze op. */}
         {isAdminMode && (
-          <div className="fixed left-0 right-0 bottom-[5.5rem] z-40 px-4 pointer-events-none">
+          <div className="fixed left-0 right-0 bottom-[6.25rem] z-40 px-4 pointer-events-none">
             <div className="max-w-2xl mx-auto">
               <button
                 dir="ltr"

@@ -210,7 +210,7 @@ export const GameHistory: React.FC<Props> = ({ games, players, onDeleteGame, onE
 
       {/* STICKY CONTAINER VOOR NIEUWE WEDSTRIJD KNOP (alleen zichtbaar in Admin mode) */}
       {isAdminMode && (
-        <div dir="ltr" lang="nl" className="fixed bottom-[5.5rem] left-0 right-0 px-4 z-40 pointer-events-none">
+        <div dir="ltr" lang="nl" className="fixed bottom-[6.25rem] left-0 right-0 px-4 z-40 pointer-events-none">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={startNewGame}

@@ -37,7 +37,6 @@ export const nl = {
     goalDiff: 'Doelsaldo',
     goalsFor: 'voor',
     goalsAgainst: 'tegen',
-    teamStats: 'Teamstatistieken',
     matches: 'Matchen',
     goals: 'Goals',
     assists: 'Assists',
@@ -45,6 +44,9 @@ export const nl = {
     saves: 'Saves',
     fun: 'Plezier',
     season: 'Seizoen {{season}}',
+    perMatch: '{{value}} per wedstrijd',
+    avgPerMatch: 'gemiddeld {{value}} per wedstrijd',
+    assistShare: '{{value}}% van de doelpunten',
   },
   history: {
     title: 'Wedstrijden',
