@@ -63,6 +63,22 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, our
       {/* Subtiel decoratief accent: een vage limoengroene gloed rechtsboven */}
       <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-48 h-48 rounded-full bg-volt/10 blur-2xl" />
 
+      {/* Een volledig voetbalveld als textuur (zijlijnen, middenlijn, middencirkel, strafschop- en
+          doelgebieden). Getekend in procenten i.p.v. met een viewBox, zodat het veld altijd volledig
+          binnen de kaart past, ongeacht de breedte. De middencirkel heeft een vaste straal zodat hij
+          rond blijft. Geen middenstip: die vormde met het streepje tussen de scores een dubbelpunt. */}
+      <svg aria-hidden className="pointer-events-none absolute inset-0 w-full h-full text-white opacity-[0.12]">
+        <g fill="none" stroke="currentColor" strokeWidth="1.2">
+          <rect x="3%" y="6%" width="94%" height="88%" rx="2" />
+          <line x1="50%" y1="6%" x2="50%" y2="94%" />
+          <circle cx="50%" cy="50%" r="36" />
+          <rect x="3%" y="27%" width="13%" height="46%" />
+          <rect x="84%" y="27%" width="13%" height="46%" />
+          <rect x="3%" y="39%" width="5%" height="22%" />
+          <rect x="92%" y="39%" width="5%" height="22%" />
+        </g>
+      </svg>
+
       <div className="relative flex justify-between items-center mb-3">
         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md ${
           isLive ? 'bg-red-500 text-white' : 'bg-white/10 text-white/70'
