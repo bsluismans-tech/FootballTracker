@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Target, Handshake, Axe, ShieldCheck, Hand, CalendarCheck, Shuffle, Flame, Trophy, Zap, TrendingUp, Lock, Users,
+  Target, Handshake, Axe, ShieldCheck, Hand, CalendarCheck, Flame, Trophy, Zap, TrendingUp, Lock, Users, Repeat,
   type LucideIcon,
 } from 'lucide-react';
 import type { BadgeId, BadgeProgress, Milestone } from '../utils/badges';
@@ -13,7 +13,7 @@ export const BADGE_ICONS: Record<BadgeId, LucideIcon> = {
   cleanSheets: ShieldCheck,
   saves: Hand,
   matches: CalendarCheck,
-  versatile: Shuffle,
+  streak: Repeat,
   hattrick: Flame,
   teamGoals: Trophy,
   teamPlay: Users,

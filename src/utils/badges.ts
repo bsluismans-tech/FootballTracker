@@ -8,7 +8,7 @@
 // - Gastspelers krijgen geen badges.
 
 import type { Game, Player } from '../types';
-import { computeQuarterSegments, POSITION_TO_GROUP, type PositionGroup } from './insights';
+import { computeQuarterSegments, POSITION_TO_GROUP } from './insights';
 
 export type PlayerBadgeId =
   | 'scorer'
@@ -18,7 +18,7 @@ export type PlayerBadgeId =
   | 'saves'
   | 'cleanSheets'
   | 'matches'
-  | 'versatile';
+  | 'streak';
 
 export type TeamBadgeId = 'teamGoals' | 'teamPlay' | 'winStreak' | 'comeback' | 'teamCleanSheet';
 
@@ -33,7 +33,8 @@ export const PLAYER_BADGES: { id: PlayerBadgeId; thresholds: number[] }[] = [
   { id: 'cleanSheets', thresholds: [1, 10, 25, 50] },
   { id: 'saves', thresholds: [1, 10, 30, 75] },
   { id: 'matches', thresholds: [5, 10, 15, 20] },
-  { id: 'versatile', thresholds: [2, 3, 4] }, // aantal linies (keeper, verdediging, midden, aanval)
+  // Altijd paraat: hoogste aantal wedstrijden op rij aanwezig (inzet en betrouwbaarheid)
+  { id: 'streak', thresholds: [3, 6, 10, 15] },
   { id: 'hattrick', thresholds: [1, 2, 3] }, // aantal hattricks
 ];
 
@@ -50,9 +51,6 @@ const THRESHOLDS: Record<BadgeId, number[]> = Object.fromEntries(
   [...PLAYER_BADGES, ...TEAM_BADGES].map(b => [b.id, b.thresholds])
 ) as Record<BadgeId, number[]>;
 
-// Hoeveel minuten iemand in een linie moet gestaan hebben (over het hele seizoen) om die linie
-// mee te tellen voor "Veelzijdig": ongeveer een half kwart, zodat een invalbeurt van 2' niet telt.
-const VERSATILE_MIN_MINUTES = 8;
 
 export interface BadgeProgress {
   id: BadgeId;
@@ -129,15 +127,16 @@ export function computeSeasonBadges(games: Game[], players: Player[], seasonId: 
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const playerValues = new Map<number, Record<PlayerBadgeId, number>>();
-  const groupMinutes = new Map<number, Record<PositionGroup, number>>();
   const valuesOf = (id: number) => {
     if (!playerValues.has(id)) {
-      playerValues.set(id, { scorer: 0, hattrick: 0, assists: 0, tackles: 0, saves: 0, cleanSheets: 0, matches: 0, versatile: 0 });
+      playerValues.set(id, { scorer: 0, hattrick: 0, assists: 0, tackles: 0, saves: 0, cleanSheets: 0, matches: 0, streak: 0 });
     }
     return playerValues.get(id)!;
   };
   eligible.forEach(id => valuesOf(id));
 
+  // Lopende reeks wedstrijden op rij aanwezig, per speler
+  const currentPresence = new Map<number, number>();
   const team: Record<TeamBadgeId, number> = { teamGoals: 0, teamPlay: 0, winStreak: 0, comeback: 0, teamCleanSheet: 0 };
   let currentStreak = 0;
   const milestones: Milestone[] = [];
@@ -159,7 +158,7 @@ export function computeSeasonBadges(games: Game[], players: Player[], seasonId: 
       (q.tackleEvents || []).forEach(e => { if (eligible.has(e.playerId)) valuesOf(e.playerId).tackles += 1; });
       (q.saveEvents || []).forEach(e => { if (eligible.has(e.playerId)) valuesOf(e.playerId).saves += 1; });
 
-      // Speelminuten per linie + clean sheets (kwart zonder tegendoelpunt): keeper en verdedigers
+      // Clean sheets (kwart zonder tegendoelpunt): keeper en verdedigers
       // die minstens de helft van het kwart in doel of in de verdediging stonden.
       const segments = computeQuarterSegments(q);
       if (segments.length === 0) return;
@@ -170,8 +169,6 @@ export function computeSeasonBadges(games: Game[], players: Player[], seasonId: 
         Object.entries(seg.lineup).forEach(([pos, id]) => {
           if (id == null || !eligible.has(id)) return;
           const group = POSITION_TO_GROUP[pos as keyof typeof POSITION_TO_GROUP];
-          if (!groupMinutes.has(id)) groupMinutes.set(id, { keeper: 0, verdediging: 0, midden: 0, aanval: 0 });
-          groupMinutes.get(id)![group] += minutes;
           if (group === 'keeper' || group === 'verdediging') {
             defensiveMinutes.set(id, (defensiveMinutes.get(id) || 0) + minutes);
           }
@@ -185,8 +182,10 @@ export function computeSeasonBadges(games: Game[], players: Player[], seasonId: 
     });
     goalsThisGame.forEach((count, id) => { if (count >= 3) valuesOf(id).hattrick += 1; });
     game.playersPresent.forEach(id => { if (eligible.has(id)) valuesOf(id).matches += 1; });
-    groupMinutes.forEach((mins, id) => {
-      valuesOf(id).versatile = Object.values(mins).filter(m => m >= VERSATILE_MIN_MINUTES).length;
+    eligible.forEach(id => {
+      const run = game.playersPresent.includes(id) ? (currentPresence.get(id) || 0) + 1 : 0;
+      currentPresence.set(id, run);
+      valuesOf(id).streak = Math.max(valuesOf(id).streak, run);
     });
 
     // --- Ploegstatistieken ---

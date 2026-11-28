@@ -77,7 +77,7 @@ export const nl = {
       cleanSheets: 'Clean sheet',
       saves: 'Redder',
       matches: 'Teamspeler',
-      versatile: 'Veelzijdig',
+      streak: 'Altijd paraat',
       hattrick: 'Hattrick',
       teamGoals: 'Doelpuntenmachine',
       teamPlay: 'Samenspel',
@@ -92,7 +92,7 @@ export const nl = {
       cleanSheets: 'Clean sheets',
       saves: 'Reddingen',
       matches: 'Wedstrijden',
-      versatile: 'Linies gespeeld',
+      streak: 'Wedstrijden op rij',
       hattrick: 'Hattrick',
       teamGoals: 'Doelpunten',
       teamPlay: 'Doelpunten uit samenspel',
@@ -148,6 +148,8 @@ export const nl = {
   // niet mee gecontroleerd door het Locale-type hieronder.
   plurals: {
     // Behaalde drempel van een badge, bv. "10 wedstrijden" (recente mijlpalen).
+    badge_streak_one: '{{count}} wedstrijd op rij',
+    badge_streak_other: '{{count}} wedstrijden op rij',
     badge_scorer_one: '{{count}} doelpunt',
     badge_scorer_other: '{{count}} doelpunten',
     badge_assists_one: '{{count}} assist',
@@ -160,8 +162,6 @@ export const nl = {
     badge_saves_other: '{{count}} reddingen',
     badge_matches_one: '{{count}} wedstrijd',
     badge_matches_other: '{{count}} wedstrijden',
-    badge_versatile_one: '{{count}} linie gespeeld',
-    badge_versatile_other: '{{count}} linies gespeeld',
     badge_hattrick_one: '{{count}} hattrick',
     badge_hattrick_other: '{{count}} hattricks',
     badge_teamGoals_one: '{{count}} doelpunt',
