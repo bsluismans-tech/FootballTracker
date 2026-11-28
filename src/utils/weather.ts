@@ -11,15 +11,17 @@ export interface Weather {
   intensity: number; // 0..1, hoe hard het regent/sneeuwt
   windy: boolean;
   isDay: boolean;
+  frost: boolean; // 2 °C of kouder: rijp op het scorebord en berijpt gras
 }
 
 const KAULILLE = { lat: 51.19, lon: 5.52 };
 const URL =
   `https://api.open-meteo.com/v1/forecast?latitude=${KAULILLE.lat}&longitude=${KAULILLE.lon}` +
-  '&current=weather_code,wind_speed_10m,is_day&timezone=Europe%2FBrussels';
-const CACHE_KEY = 'weatherKaulille:v1';
+  '&current=weather_code,wind_speed_10m,is_day,temperature_2m&timezone=Europe%2FBrussels';
+const CACHE_KEY = 'weatherKaulille:v2';
 const CACHE_MS = 20 * 60 * 1000;
 const WINDY_KMH = 25;
+const FROST_MAX_C = 2;
 
 // WMO-weercodes (zoals Open-Meteo ze gebruikt) omzetten naar wat we tekenen
 function fromCode(code: number): { kind: WeatherKind; intensity: number } {
@@ -34,7 +36,7 @@ function fromCode(code: number): { kind: WeatherKind; intensity: number } {
 }
 
 // Om de effecten te kunnen bekijken als het droog is: ?weer=regen|sneeuw|zon|onweer|bewolkt,
-// eventueel gecombineerd met wind, bv. ?weer=sneeuw,wind (of enkel ?weer=wind).
+// eventueel gecombineerd met wind en/of vorst, bv. ?weer=sneeuw,wind of ?weer=bewolkt,vorst.
 function overrideFromUrl(): Weather | null {
   if (typeof window === 'undefined') return null;
   const v = new URLSearchParams(window.location.search).get('weer');
@@ -49,8 +51,8 @@ function overrideFromUrl(): Weather | null {
   };
   const base = parts.map(p => kinds[p]).find(Boolean) ?? kinds.bewolkt;
   const windy = parts.includes('wind') || base.kind === 'storm';
-  if (!parts.some(p => p in kinds || p === 'wind')) return null;
-  return { ...base, windy, isDay: true };
+  if (!parts.some(p => p in kinds || p === 'wind' || p === 'vorst')) return null;
+  return { ...base, windy, isDay: true, frost: parts.includes('vorst') };
 }
 
 export function useWeather(): Weather | null {
@@ -80,6 +82,7 @@ export function useWeather(): Weather | null {
           intensity,
           windy: Number(current.wind_speed_10m) >= WINDY_KMH,
           isDay: current.is_day === 1,
+          frost: Number(current.temperature_2m) <= FROST_MAX_C,
         };
         setWeather(result);
         try {

@@ -311,7 +311,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             onClick={() => { if (isAdminMode) onEditGame(liveGame); }}
             className={isAdminMode ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}
           >
-            <LiveScoreboard game={liveGame} isLive={true} celebration={celebration} ourGoalPulse={ourGoalPulse} opponentGoalPulse={opponentGoalPulse} />
+            <LiveScoreboard game={liveGame} isLive={true} celebration={celebration} ourGoalPulse={ourGoalPulse} opponentGoalPulse={opponentGoalPulse} frost={!!weather?.frost} />
             {liveViewerCount != null && liveViewerCount > 0 && (
               <p className="flex items-center justify-center gap-1 text-xs text-gray-500 font-medium mt-2">
                 <Eye size={13} /> {t('plurals.viewers', { count: liveViewerCount })}
@@ -328,7 +328,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             onClick={() => onViewGame(lastFinishedGame)}
             className="cursor-pointer active:scale-[0.99] transition-transform"
           >
-            <LiveScoreboard game={lastFinishedGame} isLive={false} celebration={celebration} />
+            <LiveScoreboard game={lastFinishedGame} isLive={false} celebration={celebration} frost={!!weather?.frost} />
           </div>
         ) : (
           <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">

@@ -22,9 +22,11 @@ interface Props {
   // Eigen tekst voor het labeltje linksboven bij een afgelopen wedstrijd (bv. de datum),
   // i.p.v. "Laatste wedstrijd".
   label?: string;
+  // Vriest het in Kaulille? Dan ligt er rijp in de bovenhoeken van het scorebord.
+  frost?: boolean;
 }
 
-export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, ourGoalPulse = 0, opponentGoalPulse = 0, label }) => {
+export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, ourGoalPulse = 0, opponentGoalPulse = 0, label, frost = false }) => {
   const { t } = useTranslation();
 
   // Live minuutklok: enkel nodig tijdens een lopende wedstrijd, zodat de minuut op het
@@ -81,6 +83,22 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, our
           <rect x="92%" y="39%" width="5%" height="22%" />
         </g>
       </svg>
+
+      {/* Rijp in de bovenhoeken bij vorst: een witte, ijzige waas met een paar ijskristallen */}
+      {frost && (
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-6 -start-6 w-40 h-24 rounded-full bg-[radial-gradient(closest-side,rgba(225,240,255,0.45),transparent)]" />
+          <div className="absolute -top-6 -end-6 w-40 h-24 rounded-full bg-[radial-gradient(closest-side,rgba(225,240,255,0.45),transparent)]" />
+          <svg className="absolute top-1.5 start-2 w-16 h-10 text-white/60" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+            <path d="M8 6v10M3 11h10M4.5 7.5l7 7M11.5 7.5l-7 7" />
+            <path d="M26 3v6M23 6h6M24 4l4 4M28 4l-4 4" />
+          </svg>
+          <svg className="absolute top-1.5 end-2 w-16 h-10 text-white/60 -scale-x-100" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+            <path d="M8 6v10M3 11h10M4.5 7.5l7 7M11.5 7.5l-7 7" />
+            <path d="M26 3v6M23 6h6M24 4l4 4M28 4l-4 4" />
+          </svg>
+        </div>
+      )}
 
       <div className="relative flex justify-between items-center mb-3">
         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md ${
