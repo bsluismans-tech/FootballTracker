@@ -335,7 +335,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               <Target size={15} className="text-navy/40 shrink-0" /> {t('dashboard.goalDiff')}
             </div>
             <div>
-              <div className={`font-display text-4xl font-bold leading-none tabular-nums ${goalDiff > 0 ? 'text-volt-ink' : goalDiff < 0 ? 'text-red-600' : 'text-navy'}`}>
+              <div className="font-display text-4xl font-bold text-navy leading-none tabular-nums">
                 <CountUp value={goalDiff} signed />
               </div>
               <div className="text-xs text-gray-500 font-medium mt-1 leading-tight">
@@ -388,7 +388,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
           {[
             { label: t('dashboard.matches'), value: matchCount, icon: <Gamepad2 size={15} /> },
             { label: t('dashboard.tackles'), value: stats.totalTackles, icon: <Axe size={15} /> },
-            { label: t('dashboard.fun'), value: 100, suffix: '%', icon: <Smile size={15} />, accent: true },
+            { label: t('dashboard.fun'), value: 100, suffix: '%', icon: <Smile size={15} /> },
           ].map(item => (
             <div key={item.label} className={`col-span-2 ${card} p-4`}>
               <div className={cardLabel}>
@@ -397,7 +397,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
               <CountUp
                 value={item.value}
                 suffix={item.suffix}
-                className={`block mt-2.5 font-display text-4xl font-bold leading-[0.9] tabular-nums ${item.accent ? 'text-volt-ink' : 'text-navy'}`}
+                className="block mt-2.5 font-display text-4xl font-bold text-navy leading-[0.9] tabular-nums"
               />
             </div>
           ))}

@@ -60,6 +60,7 @@ export const nl = {
     won: 'Gewonnen!',
   },
   badges: {
+    level: 'Level {{level}}',
     title: 'Badges',
     teamTitle: 'Ploegbadges',
     recentTitle: 'Recente mijlpalen',
@@ -135,6 +136,33 @@ export const nl = {
   // (_one, _two, _few, _many, _other, _zero — afhankelijk van de taal), daarom worden deze
   // niet mee gecontroleerd door het Locale-type hieronder.
   plurals: {
+    // Behaalde drempel van een badge, bv. "10 wedstrijden" (recente mijlpalen).
+    badge_scorer_one: '{{count}} doelpunt',
+    badge_scorer_other: '{{count}} doelpunten',
+    badge_assists_one: '{{count}} assist',
+    badge_assists_other: '{{count}} assists',
+    badge_tackles_one: '{{count}} tackle',
+    badge_tackles_other: '{{count}} tackles',
+    badge_cleanSheets_one: '{{count}} clean sheet',
+    badge_cleanSheets_other: '{{count}} clean sheets',
+    badge_saves_one: '{{count}} redding',
+    badge_saves_other: '{{count}} reddingen',
+    badge_matches_one: '{{count}} wedstrijd',
+    badge_matches_other: '{{count}} wedstrijden',
+    badge_versatile_one: '{{count}} linie gespeeld',
+    badge_versatile_other: '{{count}} linies gespeeld',
+    badge_hattrick_one: '{{count}} hattrick',
+    badge_hattrick_other: '{{count}} hattricks',
+    badge_teamGoals_one: '{{count}} doelpunt',
+    badge_teamGoals_other: '{{count}} doelpunten',
+    badge_teamPlay_one: '{{count}} doelpunt uit samenspel',
+    badge_teamPlay_other: '{{count}} doelpunten uit samenspel',
+    badge_winStreak_one: '{{count}} zege op rij',
+    badge_winStreak_other: '{{count}} zeges op rij',
+    badge_comeback_one: '{{count}} comeback',
+    badge_comeback_other: '{{count}} comebacks',
+    badge_teamCleanSheet_one: '{{count}} keer de nul gehouden',
+    badge_teamCleanSheet_other: '{{count}} keer de nul gehouden',
     viewers_one: '{{count}} kijker volgt mee',
     viewers_other: '{{count}} kijkers volgen mee',
     // Bewust geen enkelvoud: zo stond het er al ("1 Reddingen").

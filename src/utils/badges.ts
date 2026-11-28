@@ -29,7 +29,7 @@ export type BadgeId = PlayerBadgeId | TeamBadgeId;
 export const PLAYER_BADGES: { id: PlayerBadgeId; thresholds: number[] }[] = [
   { id: 'scorer', thresholds: [1, 5, 10, 25] },
   { id: 'assists', thresholds: [1, 5, 10, 20] },
-  { id: 'tackles', thresholds: [5, 15, 30, 50] },
+  { id: 'tackles', thresholds: [3, 8, 15, 25] },
   { id: 'cleanSheets', thresholds: [1, 10, 25, 50] },
   { id: 'saves', thresholds: [1, 10, 30, 75] },
   { id: 'matches', thresholds: [5, 10, 15, 20] },
@@ -77,6 +77,9 @@ export interface SeasonBadges {
   team: BadgeProgress[];
   milestones: Milestone[]; // chronologisch, oudste eerst
 }
+
+/** Aantal niveaus van een badge (= aantal sterren). */
+export const levelCount = (id: BadgeId): number => THRESHOLDS[id].length;
 
 export const levelFor = (id: BadgeId, value: number): number =>
   THRESHOLDS[id].filter(t => value >= t).length;

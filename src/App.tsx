@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import type { Player, Game } from './types';
 import { Dashboard } from './components/Dashboard';
 import { Navigation } from './components/Navigation';
@@ -19,6 +19,12 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([]);
 
   const [view, setView] = useState('dashboard');
+
+  // Bij het wisselen van scherm altijd bovenaan beginnen (anders erft het nieuwe scherm de
+  // scrollpositie van het vorige). useLayoutEffect: vóór het tekenen, dus zonder zichtbare sprong.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   // Splashscreen: één keer per sessie (niet opnieuw na een herlaad door de auto-update).
   const [showSplash, setShowSplash] = useState(() => {
