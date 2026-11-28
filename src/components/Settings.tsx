@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, User, ChevronLeft, ChevronRight, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Player, Game, FieldPosition } from '../types';
@@ -15,13 +15,20 @@ interface Props {
   players: Player[];
   games: Game[];
   isAdminMode: boolean;
+  // Als er elders (bv. op een badge op het startscherm) op een speler getikt is, opent hier meteen
+  // diens spelerspagina.
+  initialPlayerId?: number | null;
+  onPlayerConsumed?: () => void;
+  // Scherm waar die speler vandaan geopend werd (bv. 'dashboard'): "terug" gaat dan daarheen.
+  returnView?: string | null;
+  onReturn?: () => void;
 }
 
 // De tweede positie tonen we pas vanaf een half kwart: een invalbeurt van 2' is geen "positie".
 const SECOND_POSITION_MIN_MINUTES = 8;
 
 // --- SUBPAGINA: SPELERSFICHE (volledig scherm, met terugknop) ---
-const PlayerStatsPage: React.FC<{ player: Player; games: Game[]; onBack: () => void }> = ({ player, games, onBack }) => {
+const PlayerStatsPage: React.FC<{ player: Player; games: Game[]; onBack: () => void; backLabel: string }> = ({ player, games, onBack, backLabel }) => {
   const { t } = useTranslation();
   // Alles in de spelersfiche (cijfers én badges) geldt voor het lopende seizoen.
   const season = getSeasonId();
@@ -70,7 +77,7 @@ const PlayerStatsPage: React.FC<{ player: Player; games: Game[]; onBack: () => v
         onClick={onBack}
         className="flex items-center gap-1 -ms-1.5 pt-2 pe-2 py-1 text-navy font-semibold text-sm rounded-lg active:bg-navy/5 transition-colors"
       >
-        <ChevronLeft size={20} className="rtl:rotate-180" /> {t('team.title')}
+        <ChevronLeft size={20} className="rtl:rotate-180" /> {backLabel}
       </button>
 
       {/* Kop: navy kaart met de naam en de posities, in de stijl van een FIFA-kaart */}
@@ -137,13 +144,29 @@ const PlayerStatsPage: React.FC<{ player: Player; games: Game[]; onBack: () => v
 };
 
 // --- MAIN SETTINGS COMPONENT ---
-export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
+export const Settings: React.FC<Props> = ({ players, games, isAdminMode, initialPlayerId, onPlayerConsumed, returnView, onReturn }) => {
   const { t } = useTranslation();
   const season = getSeasonId();
   const teamBadges = useMemo(() => computeSeasonBadges(games, players, season).team, [games, players, season]);
 
   // Spelersfiche als subpagina: terug (knop of telefoon) brengt je naar de lijst op dezelfde plek.
-  const { selected: selectedPlayerId, open: openPlayer, close: closePlayer } = useSubPage<number>();
+  const { selected: selectedPlayerId, open: openPlayer, close: closePlayer } = useSubPage<number>(initialPlayerId ?? null);
+  // Eenmalig "verbruiken", zodat een latere gewone navigatie naar Ploeg de lijst toont
+  useEffect(() => {
+    if (initialPlayerId != null) onPlayerConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Werd de spelerspagina van elders geopend (bv. via een badge op het startscherm)? Dan brengt
+  // "terug" (knop of telefoon) je naar dat scherm i.p.v. naar de spelerslijst.
+  const [openedFrom] = useState(() => (initialPlayerId != null && returnView && returnView !== 'settings' ? returnView : null));
+  const returnedRef = React.useRef(false);
+  useEffect(() => {
+    if (openedFrom && selectedPlayerId == null && !returnedRef.current) {
+      returnedRef.current = true;
+      onReturn?.();
+    }
+  }, [openedFrom, selectedPlayerId, onReturn]);
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [newPlayerIsKeeper, setNewPlayerIsKeeper] = useState(false);
@@ -186,9 +209,20 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
     } catch (e) { console.error(e); }
   };
 
+  // Op weg terug naar het scherm waar de speler vandaan geopend werd: niets tonen (geen flits
+  // van de spelerslijst)
+  if (openedFrom && selectedPlayerId == null) return null;
+
   const selectedPlayer = selectedPlayerId != null ? players.find(p => p.id === selectedPlayerId) : undefined;
   if (selectedPlayer) {
-    return <PlayerStatsPage player={selectedPlayer} games={games} onBack={closePlayer} />;
+    return (
+      <PlayerStatsPage
+        player={selectedPlayer}
+        games={games}
+        onBack={closePlayer}
+        backLabel={openedFrom === 'dashboard' ? t('nav.start') : t('team.title')}
+      />
+    );
   }
 
   return (

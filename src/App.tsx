@@ -48,6 +48,16 @@ export default function App() {
     setView('history');
   };
 
+  // Tik op een badge van een speler (bv. bij de recente mijlpalen) opent meteen diens spelerspagina.
+  // "Terug" op die pagina brengt je dan naar het scherm waar je vandaan kwam.
+  const [openPlayerId, setOpenPlayerId] = useState<number | null>(null);
+  const [playerReturnView, setPlayerReturnView] = useState<string | null>(null);
+  const viewPlayer = (playerId: number) => {
+    setOpenPlayerId(playerId);
+    setPlayerReturnView(view);
+    setView('settings');
+  };
+
   // ADMIN MODE: standaard uit, activeren/deactiveren door 3x op het clublogo te tikken
   const [isAdminMode, setIsAdminMode] = useState(false);
   const logoTapCountRef = useRef(0);
@@ -202,6 +212,7 @@ export default function App() {
           onLogoTap={handleLogoTap}
           onEditGame={(game) => editGame(game, 'dashboard')}
           onViewGame={viewGameInHistory}
+          onViewPlayer={viewPlayer}
         />
       )}
 
@@ -210,6 +221,10 @@ export default function App() {
           players={players}
           games={games}
           isAdminMode={isAdminMode}
+          initialPlayerId={openPlayerId}
+          onPlayerConsumed={() => setOpenPlayerId(null)}
+          returnView={playerReturnView}
+          onReturn={() => { setView(playerReturnView ?? 'settings'); setPlayerReturnView(null); }}
         />
       )}
 

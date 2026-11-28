@@ -86,19 +86,41 @@ export const BadgeGrid: React.FC<{ progress: BadgeProgress[] }> = ({ progress })
 };
 
 /** Lijst met mijlpalen (bv. "Recente mijlpalen" op het startscherm). */
-export const MilestoneList: React.FC<{ milestones: Milestone[]; playerName: (id: number) => string }> = ({ milestones, playerName }) => {
+export const MilestoneList: React.FC<{
+  milestones: Milestone[];
+  playerName: (id: number) => string;
+  // Optioneel: tik op een mijlpaal van een speler opent diens spelerspagina
+  onSelectPlayer?: (playerId: number) => void;
+}> = ({ milestones, playerName, onSelectPlayer }) => {
   const { t } = useTranslation();
   return (
     <div className="divide-y divide-gray-100">
-      {milestones.map(m => (
-        <div key={`${m.gameId}-${m.id}-${m.level}-${m.playerId ?? 'team'}`} className="flex items-center gap-3 py-2.5">
-          <BadgeMedal id={m.id} level={m.level} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-navy truncate">{m.playerId == null ? t('badges.team') : playerName(m.playerId)}</p>
-            <p className="text-xs text-gray-500 truncate">{t(`plurals.badge_${m.id}`, { count: m.threshold })}</p>
-          </div>
-        </div>
-      ))}
+      {milestones.map(m => {
+        const key = `${m.gameId}-${m.id}-${m.level}-${m.playerId ?? 'team'}`;
+        const content = (
+          <>
+            <BadgeMedal id={m.id} level={m.level} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-navy truncate">{m.playerId == null ? t('badges.team') : playerName(m.playerId)}</p>
+              <p className="text-xs text-gray-500 truncate">{t(`plurals.badge_${m.id}`, { count: m.threshold })}</p>
+            </div>
+          </>
+        );
+        // Mijlpaal van een speler: tikbaar (opent de spelerspagina)
+        if (onSelectPlayer && m.playerId != null) {
+          const playerId = m.playerId;
+          return (
+            <button
+              key={key}
+              onClick={() => onSelectPlayer(playerId)}
+              className="w-[calc(100%+1rem)] text-start flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-xl active:bg-navy/5 transition-colors"
+            >
+              {content}
+            </button>
+          );
+        }
+        return <div key={key} className="flex items-center gap-3 py-2.5">{content}</div>;
+      })}
     </div>
   );
 };

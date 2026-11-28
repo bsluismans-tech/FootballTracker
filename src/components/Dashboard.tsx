@@ -24,9 +24,10 @@ interface Props {
   onLogoTap: () => void;
   onEditGame: (game: Game) => void;
   onViewGame: (game: Game) => void;
+  onViewPlayer: (playerId: number) => void;
 }
 
-export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame, onViewGame }) => {
+export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canStart, isAdminMode, onLogoTap, onEditGame, onViewGame, onViewPlayer }) => {
   const { t, i18n } = useTranslation();
   const [liveGame, setLiveGame] = useState<Game | null>(null);
   const [lastFinishedGame, setLastFinishedGame] = useState<Game | null>(null);
@@ -466,7 +467,7 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
             <div className={`${cardLabel} mb-1`}>
               <Award size={15} className="text-navy/40" /> {t('badges.recentTitle')}
             </div>
-            <MilestoneList milestones={recentMilestones} playerName={getPlayerName} />
+            <MilestoneList milestones={recentMilestones} playerName={getPlayerName} onSelectPlayer={onViewPlayer} />
           </div>
         )}
 
