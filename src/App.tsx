@@ -182,7 +182,11 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${view === 'dashboard' ? 'bg-navy/5' : 'bg-gray-50'} pb-24`}>
+    <div className={`min-h-screen ${view === 'dashboard' ? '' : 'bg-gray-50'} pb-24`}>
+      {/* Startscherm: de achtergrond (grasstroken) staat vast, de kaarten scrollen eroverheen,
+          zoals in de Weer-app van iPhone. Een vaste laag i.p.v. background-attachment: fixed,
+          want dat laatste negeert Safari op iPhone. */}
+      {view === 'dashboard' && <div aria-hidden className="dashboard-bg fixed inset-0 -z-10" />}
       {showSplash && <SplashScreen onDone={hideSplash} />}
       {/* Zachte overgang bij het wisselen van scherm: het nieuwe scherm vervaagt kort in beeld.
           Bewust enkel opacity (geen transform): een transform zou vaste elementen zoals de
