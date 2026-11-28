@@ -7,6 +7,8 @@ import { LiveScoreboard, type ScoreboardCelebration } from './LiveScoreboard';
 import { burstConfettiFrom, vibrate } from '../utils/celebrate';
 import { computeSeasonBadges, liveGoalMilestone } from '../utils/badges';
 import { MilestoneList } from './Badges';
+import { DashboardAtmosphere } from './DashboardAtmosphere';
+import { useWeather } from '../utils/weather';
 import { LanguagePicker } from './LanguagePicker';
 import type { Player, Game } from '../types';
 import { getSeasonId } from '../utils/season';
@@ -83,6 +85,23 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
   // We vieren enkel wat er gebeurt terwijl het startscherm open staat: bij het openen van de app
   // nemen we de huidige stand als vertrekpunt, zodat oude doelpunten niet opnieuw gevierd worden.
   const scoreboardRef = useRef<HTMLElement>(null);
+
+  // --- SFEERLAAG & COMPACTE BALK ---
+  const weather = useWeather();
+  // Compacte balk bovenaan zodra het scorebord uit beeld gescrold is (zoals de plaatsnaam in de
+  // Weer-app van iPhone)
+  const [showCompactBar, setShowCompactBar] = useState(false);
+  useEffect(() => {
+    const el = scoreboardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowCompactBar(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const lastScoreRef = useRef<{ id: number; ours: number; theirs: number } | null>(null);
   // Id van de live wedstrijd die we hier zagen spelen: als die als gewonnen afgesloten wordt,
   // volgt eenmalig een overwinningsviering.
@@ -234,10 +253,48 @@ export const Dashboard: React.FC<Props> = ({ players, games, startNewGame, canSt
 
   // Eén vaste stijl voor alle lichte kaarten op het startscherm.
   const card = 'relative overflow-hidden bg-white rounded-2xl shadow-sm ring-1 ring-navy/5';
+
+  // Score voor de compacte balk (enkel tijdens een lopende wedstrijd). Thuisploeg altijd links.
+  const barGame = liveGame;
+  const barScore = barGame && (() => {
+    const ours = barGame.quarters.reduce((sum, q) => sum + (q.goalEvents?.length || 0), 0);
+    const theirs = barGame.quarters.reduce((sum, q) => sum + (q.opponentGoalEvents?.length || 0), 0);
+    const opponent = barGame.opponent || t('common.opponent');
+    return barGame.isAway
+      ? { home: opponent, away: 'Kaulille', score: `${theirs} - ${ours}` }
+      : { home: 'Kaulille', away: opponent, score: `${ours} - ${theirs}` };
+  })();
   const cardLabel = 'flex items-center gap-1.5 text-sm font-medium text-gray-500';
 
   return (
     <div className={`max-w-2xl mx-auto p-4 select-none space-y-5 ${isAdminMode ? 'pb-48' : 'pb-32'}`}>
+      {/* Sfeerlaag achter de kaarten: gras (trager meescrollend) en het weer in Kaulille */}
+      <DashboardAtmosphere weather={weather} targetRef={scoreboardRef} />
+
+      {/* Compacte live-balk: enkel tijdens een lopende wedstrijd, en pas zodra het scorebord uit
+          beeld gescrold is. Tik = terug naar boven. */}
+      {barScore && (
+        <div
+          aria-hidden={!showCompactBar}
+          className={`fixed top-0 inset-x-0 z-40 px-4 pt-2 transition-all duration-300 ${showCompactBar ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`}
+        >
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="max-w-2xl mx-auto w-full h-12 px-4 flex items-center gap-3 bg-white/90 backdrop-blur-md rounded-2xl ring-1 ring-navy/5 shadow-[0_8px_24px_-8px_rgba(4,23,76,0.25)]"
+          >
+            {/* Thuisploeg links, uitploeg rechts (zoals op het scorebord), beide in hetzelfde lettertype */}
+            <span dir="ltr" className="flex-1 min-w-0 flex items-center justify-center gap-3">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-red-500 text-white shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />{t('scoreboard.live')}
+              </span>
+              <span className="flex-1 min-w-0 text-end text-sm font-semibold text-navy truncate">{barScore.home}</span>
+              <span className="font-display text-xl font-bold text-navy tabular-nums leading-none shrink-0">{barScore.score}</span>
+              <span className="flex-1 min-w-0 text-start text-sm font-semibold text-navy truncate">{barScore.away}</span>
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-1 pt-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
