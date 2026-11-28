@@ -98,6 +98,17 @@ export const fr: Locale = {
       teamCleanSheet: 'Matchs sans encaisser',
     },
   },
+  // Veldposities (spelersfiche)
+  positions: {
+    keeper: 'Gardien',
+    verdediger_links: 'Arrière gauche',
+    verdediger_centraal: 'Défenseur central',
+    verdediger_rechts: 'Arrière droit',
+    middenvelder: 'Milieu',
+    aanvaller_links: 'Ailier gauche',
+    spits: 'Attaquant',
+    aanvaller_rechts: 'Ailier droit',
+  },
   timeline: {
     unknown: 'Inconnu',
     goal: 'But',

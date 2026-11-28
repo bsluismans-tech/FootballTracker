@@ -101,6 +101,17 @@ export const nl = {
       teamCleanSheet: 'Nul gehouden',
     },
   },
+  // Veldposities (spelersfiche)
+  positions: {
+    keeper: 'Keeper',
+    verdediger_links: 'Verdediger links',
+    verdediger_centraal: 'Verdediger centraal',
+    verdediger_rechts: 'Verdediger rechts',
+    middenvelder: 'Middenvelder',
+    aanvaller_links: 'Aanvaller links',
+    spits: 'Spits',
+    aanvaller_rechts: 'Aanvaller rechts',
+  },
   timeline: {
     unknown: 'Onbekend',
     goal: 'Goal',

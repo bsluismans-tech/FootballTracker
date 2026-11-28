@@ -98,6 +98,17 @@ export const en: Locale = {
       teamCleanSheet: 'Shutouts',
     },
   },
+  // Veldposities (spelersfiche)
+  positions: {
+    keeper: 'Goalkeeper',
+    verdediger_links: 'Left back',
+    verdediger_centraal: 'Centre back',
+    verdediger_rechts: 'Right back',
+    middenvelder: 'Midfielder',
+    aanvaller_links: 'Left winger',
+    spits: 'Striker',
+    aanvaller_rechts: 'Right winger',
+  },
   timeline: {
     unknown: 'Unknown',
     goal: 'Goal',

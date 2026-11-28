@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Trash2, User, X, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
+import { Plus, Trash2, User, ChevronLeft, ChevronRight, Gamepad2, Star, Target, Handshake, Axe, Shield, Hand } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { Player, Game } from '../types';
+import type { Player, Game, FieldPosition } from '../types';
+import { computeQuarterSegments } from '../utils/insights';
 import { computeSeasonBadges } from '../utils/badges';
 import { getSeasonId } from '../utils/season';
 import { BadgeGrid } from './Badges';
 import { db } from '../firebase';
 import { doc, setDoc, updateDoc, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { CountUp } from './CountUp';
+import { useSubPage } from '../utils/useSubPage';
 
 interface Props {
   players: Player[];
@@ -15,8 +17,11 @@ interface Props {
   isAdminMode: boolean;
 }
 
-// --- SUBCOMPONENT: PLAYER STATS MODAL ---
-const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () => void }> = ({ player, games, onClose }) => {
+// De tweede positie tonen we pas vanaf een half kwart: een invalbeurt van 2' is geen "positie".
+const SECOND_POSITION_MIN_MINUTES = 8;
+
+// --- SUBPAGINA: SPELERSFICHE (volledig scherm, met terugknop) ---
+const PlayerStatsPage: React.FC<{ player: Player; games: Game[]; onBack: () => void }> = ({ player, games, onBack }) => {
   const { t } = useTranslation();
   // Alles in de spelersfiche (cijfers én badges) geldt voor het lopende seizoen.
   const season = getSeasonId();
@@ -33,6 +38,22 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
     return acc;
   }, { goals: 0, assists: 0, tackles: 0, saves: 0, matches: 0 });
 
+  // De (hoogstens) 2 posities waarop de speler dit seizoen de meeste minuten speelde
+  const topPositions = useMemo(() => {
+    const minutes = new Map<FieldPosition, number>();
+    finishedGames.forEach(game => game.quarters.forEach(q => {
+      computeQuarterSegments(q).forEach(seg => {
+        (Object.entries(seg.lineup) as [FieldPosition, number][]).forEach(([pos, id]) => {
+          if (id === player.id) minutes.set(pos, (minutes.get(pos) || 0) + seg.end - seg.start + 1);
+        });
+      });
+    }));
+    const sorted = [...minutes.entries()].sort((a, b) => b[1] - a[1]);
+    return sorted.filter(([, m], i) => m > 0 && (i === 0 || (i === 1 && m >= SECOND_POSITION_MIN_MINUTES))).map(([pos]) => pos);
+    // finishedGames is afgeleid van games + seizoen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [games, player.id, season]);
+
   // Badges van het lopende seizoen (gasten krijgen geen badges)
   const badges = useMemo(
     () => (player.isGuest
@@ -43,31 +64,40 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
   );
 
   return (
-    <div
-      // Klik op de achtergrond sluit de modal
-      onClick={onClose}
-      className="fixed inset-0 bg-navy/90 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300 cursor-pointer"
-    >
-      <div
-        // StopPropagation voorkomt dat klikken OP de kaart de modal sluit
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-sm max-h-[90vh] overflow-y-auto overscroll-contain rounded-3xl shadow-2xl relative border-4 border-white cursor-default"
+    <div className="max-w-2xl mx-auto p-4 pb-32 space-y-4">
+      {/* Terug naar de ploeg */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 -ms-1.5 pt-2 pe-2 py-1 text-navy font-semibold text-sm rounded-lg active:bg-navy/5 transition-colors"
       >
-        <div className="bg-gradient-to-br from-navy to-navy-light p-8 text-center relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 end-4 text-white/50 hover:text-white transition-colors p-2"
-          >
-            <X size={24} />
-          </button>
-          <div className="w-20 h-20 bg-white/10 rounded-full mx-auto mb-4 flex items-center justify-center border-2 border-white/20">
-            <Star size={40} className="text-volt fill-volt" />
-          </div>
-          <h3 className="font-display text-3xl font-bold text-white leading-none">{player.name}</h3>
-          <p className="mt-1.5 text-white/60 text-xs font-medium">{t('team.playerSubtitle')} · {t('dashboard.season', { season })}</p>
-        </div>
+        <ChevronLeft size={20} className="rtl:rotate-180" /> {t('team.title')}
+      </button>
 
-        <div className="p-6 grid grid-cols-2 gap-3 bg-gray-50">
+      {/* Kop: navy kaart met de naam en de posities, in de stijl van een FIFA-kaart */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-navy to-navy-light p-6 text-center shadow-lg">
+        <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-48 h-48 rounded-full bg-volt/10 blur-2xl" />
+        {/* Clublogo subtiel in de achtergrond: als witte silhouet, groot en licht gekanteld */}
+        <img
+          src="/clublogo.png"
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="pointer-events-none absolute -bottom-10 -end-8 w-48 h-48 opacity-[0.07] rotate-[-12deg] brightness-0 invert"
+        />
+
+        <div className="relative w-16 h-16 bg-white/10 rounded-full mx-auto mb-3 flex items-center justify-center ring-2 ring-white/20">
+          <Star size={32} className="text-volt fill-volt" />
+        </div>
+        <h1 className="relative font-display text-4xl font-semibold text-white leading-none">{player.name}</h1>
+        {topPositions.length > 0 && (
+          <p className="relative mt-3 text-sm font-semibold text-white">
+            {topPositions.map(pos => t(`positions.${pos}`)).join(' / ')}
+          </p>
+        )}
+        <p className="relative mt-1 text-white/60 text-xs font-medium">{t('team.playerSubtitle')} · {t('dashboard.season', { season })}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
           <div className="bg-white p-4 rounded-2xl shadow-sm ring-1 ring-navy/5 flex flex-col items-center">
             <Gamepad2 size={16} className="text-navy/40 mb-1" />
             <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.matches} /></div>
@@ -88,23 +118,20 @@ const PlayerStatsModal: React.FC<{ player: Player; games: Game[]; onClose: () =>
             <div className="font-display text-4xl font-bold text-navy tabular-nums leading-none"><CountUp value={stats.tackles} /></div>
             <div className="mt-1 text-xs font-medium text-gray-500">{t('team.tackles')}</div>
           </div>
-          {stats.saves > 0 && (
-            <div className="col-span-2 bg-white p-3 rounded-2xl shadow-sm ring-1 ring-navy/5 flex items-center justify-center gap-4">
-              <Shield size={16} className="text-navy/40" />
-              <div className="text-sm font-semibold text-navy">{t('plurals.saves', { count: stats.saves })}</div>
-            </div>
-          )}
-        </div>
-
-        {badges && (
-          <div className="px-6 pb-6 bg-gray-50">
-            <div className="flex items-baseline justify-between gap-2 mb-3">
-              <h4 className="text-base font-semibold text-navy">{t('badges.title')}</h4>
-            </div>
-            <BadgeGrid progress={badges} />
+        {stats.saves > 0 && (
+          <div className="col-span-2 bg-white p-3 rounded-2xl shadow-sm ring-1 ring-navy/5 flex items-center justify-center gap-4">
+            <Shield size={16} className="text-navy/40" />
+            <div className="text-sm font-semibold text-navy">{t('plurals.saves', { count: stats.saves })}</div>
           </div>
         )}
       </div>
+
+      {badges && (
+        <section>
+          <h2 className="text-base font-semibold text-navy mb-3 px-1">{t('badges.title')}</h2>
+          <BadgeGrid progress={badges} />
+        </section>
+      )}
     </div>
   );
 };
@@ -115,7 +142,8 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
   const season = getSeasonId();
   const teamBadges = useMemo(() => computeSeasonBadges(games, players, season).team, [games, players, season]);
 
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  // Spelersfiche als subpagina: terug (knop of telefoon) brengt je naar de lijst op dezelfde plek.
+  const { selected: selectedPlayerId, open: openPlayer, close: closePlayer } = useSubPage<number>();
   const [confirm, setConfirm] = useState<{ id: number, name: string } | null>(null);
   const [playerName, setPlayerName] = useState('');
   const [newPlayerIsKeeper, setNewPlayerIsKeeper] = useState(false);
@@ -157,6 +185,11 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
       await batch.commit();
     } catch (e) { console.error(e); }
   };
+
+  const selectedPlayer = selectedPlayerId != null ? players.find(p => p.id === selectedPlayerId) : undefined;
+  if (selectedPlayer) {
+    return <PlayerStatsPage player={selectedPlayer} games={games} onBack={closePlayer} />;
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-4 pb-32 space-y-6 select-none">
@@ -212,7 +245,7 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
         {[...players].sort((a, b) => Number(!!a.isGuest) - Number(!!b.isGuest) || a.name.localeCompare(b.name)).map(player => (
           <div
             key={player.id}
-            onClick={() => setSelectedPlayer(player)}
+            onClick={() => openPlayer(player.id)}
             className="bg-white rounded-2xl shadow-sm ring-1 ring-navy/5 overflow-hidden cursor-pointer group hover:ring-navy/15 transition-shadow"
           >
             <div className="p-4 flex justify-between items-center">
@@ -255,6 +288,8 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
                     <Trash2 size={18} />
                   </button>
                 )}
+                {/* Pijltje: tikken opent de spelersfiche */}
+                <ChevronRight size={20} className="text-gray-400 rtl:rotate-180" />
               </div>
             </div>
           </div>
@@ -262,7 +297,6 @@ export const Settings: React.FC<Props> = ({ players, games, isAdminMode }) => {
       </section>
 
       {/* Modals */}
-      {selectedPlayer && <PlayerStatsModal player={selectedPlayer} games={games} onClose={() => setSelectedPlayer(null)} />}
 
       {confirm && (
         <div className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200" onMouseDown={() => setConfirm(null)}>

@@ -98,6 +98,17 @@ export const pl: Locale = {
       teamCleanSheet: 'Mecze bez straty gola',
     },
   },
+  // Veldposities (spelersfiche)
+  positions: {
+    keeper: 'Bramkarz',
+    verdediger_links: 'Lewy obrońca',
+    verdediger_centraal: 'Środkowy obrońca',
+    verdediger_rechts: 'Prawy obrońca',
+    middenvelder: 'Pomocnik',
+    aanvaller_links: 'Lewy skrzydłowy',
+    spits: 'Napastnik',
+    aanvaller_rechts: 'Prawy skrzydłowy',
+  },
   timeline: {
     unknown: 'Nieznany',
     goal: 'Gol',

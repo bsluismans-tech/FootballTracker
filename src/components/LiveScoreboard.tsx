@@ -19,9 +19,12 @@ interface Props {
   // trillen. 0 = geen animatie (bv. bij het openen van de app).
   ourGoalPulse?: number;
   opponentGoalPulse?: number;
+  // Eigen tekst voor het labeltje linksboven bij een afgelopen wedstrijd (bv. de datum),
+  // i.p.v. "Laatste wedstrijd".
+  label?: string;
 }
 
-export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, ourGoalPulse = 0, opponentGoalPulse = 0 }) => {
+export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, ourGoalPulse = 0, opponentGoalPulse = 0, label }) => {
   const { t } = useTranslation();
 
   // Live minuutklok: enkel nodig tijdens een lopende wedstrijd, zodat de minuut op het
@@ -84,7 +87,7 @@ export const LiveScoreboard: React.FC<Props> = ({ game, isLive, celebration, our
           isLive ? 'bg-red-500 text-white' : 'bg-white/10 text-white/70'
         }`}>
           {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-          {isLive ? t('scoreboard.live') : t('scoreboard.lastMatch')}
+          {isLive ? t('scoreboard.live') : (label ?? t('scoreboard.lastMatch'))}
         </span>
 
         {/* Resultaat-badge (alleen bij een afgeronde wedstrijd) */}

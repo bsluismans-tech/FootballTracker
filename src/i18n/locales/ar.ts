@@ -100,6 +100,17 @@ export const ar: Locale = {
       teamCleanSheet: 'مباريات بشباك نظيفة',
     },
   },
+  // Veldposities (spelersfiche)
+  positions: {
+    keeper: 'حارس المرمى',
+    verdediger_links: 'ظهير أيسر',
+    verdediger_centraal: 'قلب دفاع',
+    verdediger_rechts: 'ظهير أيمن',
+    middenvelder: 'لاعب وسط',
+    aanvaller_links: 'جناح أيسر',
+    spits: 'مهاجم',
+    aanvaller_rechts: 'جناح أيمن',
+  },
   timeline: {
     unknown: 'غير معروف',
     goal: 'هدف',
